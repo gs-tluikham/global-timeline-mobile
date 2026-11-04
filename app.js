@@ -318,14 +318,6 @@
     if (h < 24 && dayDiff(t) === 0) return `${h}h ago`;
     return shortStamp(t);
   }
-  function groupLabel(t) {
-    const d = dayDiff(t);
-    if (d < 0) return "Upcoming";
-    if (d === 0) return "Today";
-    if (d === 1) return "Yesterday";
-    if (d < 7) return new Date(t).toLocaleDateString([], { weekday: "long" });
-    return new Date(t).toLocaleDateString([], { month: "long", year: "numeric" });
-  }
   const pad = (n) => String(n).padStart(2, "0");
   const toDateInput = (t) => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
   const toTimeInput = (t) => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -615,21 +607,10 @@
         </div>`;
       return;
     }
-    const groups = [];
-    list.forEach((a) => {
-      const label = groupLabel(a.date);
-      let g = groups[groups.length - 1];
-      if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
-      g.items.push(a);
-    });
     const summary = feedSummary(list.length);
     feed.innerHTML =
       (summary ? `<div class="feed__summary">${summary}</div>` : "") +
-      groups.map((g) => `
-        <section class="group">
-          <h2 class="group__label">${esc(g.label)}</h2>
-          <div class="group__list">${g.items.map(cardHtml).join("")}</div>
-        </section>`).join("");
+      `<div class="group__list">${list.map(cardHtml).join("")}</div>`;
     if (state.lastLoggedId) setTimeout(() => { state.lastLoggedId = null; }, 2500);
   }
 

@@ -139,11 +139,13 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
   align-items: center;
   gap: 6px;
   height: 36px;
-  padding: 0 10px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--border-2);
   border-radius: 999px;
-  color: var(--text-2);
+  background: var(--surface);
+  color: var(--primary);
 }
-.drafts-btn:hover { background: var(--bg); color: var(--text); }
+.drafts-btn:hover { background: var(--primary-soft); color: var(--primary); }
 .drafts-btn__label { display: none; font-weight: 500; }
 .drafts-btn__count {
   min-width: 22px;
@@ -1106,8 +1108,6 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   #drafts-appbar .toolbar .search { width: 320px; }
   #drafts-appbar .segmented { flex: none; }
 
-  .drafts-btn { border: 1px solid var(--border-2); padding: 0 8px 0 12px; color: var(--primary); }
-  .drafts-btn:hover { background: var(--primary-soft); color: var(--primary); }
   .drafts-btn__label { display: inline; }
 
   .feed { padding: 16px 24px 48px; }
