@@ -33,6 +33,7 @@
     checkCircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
     circle: '<circle cx="12" cy="12" r="9"/>',
     template: '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>',
+    paperclip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
   };
   const svg = (name, size = 18) =>
     `<svg class="i" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -76,10 +77,10 @@
   ];
 
   const RELATIONSHIPS = [
-    { id: "re1", name: "Data Platform", companyId: "co1" },
-    { id: "re2", name: "EMEA Expansion", companyId: "co2" },
-    { id: "re3", name: "Fleet Ops", companyId: "co4" },
-    { id: "re4", name: "Patient Portal", companyId: "co6" },
+    { id: "re1", name: "Data Platform", companyId: "co1", relType: "Product", activityTypes: ["Call", "Meeting", "Email", "Update"] },
+    { id: "re2", name: "EMEA Expansion", companyId: "co2", relType: "Region", activityTypes: ["Call", "Meeting", "Update"] },
+    { id: "re3", name: "Fleet Ops", companyId: "co4", relType: "Product", activityTypes: ["Call", "Meeting", "Update", "Milestone"] },
+    { id: "re4", name: "Patient Portal", companyId: "co6", relType: "Product", activityTypes: ["Call", "Email", "Update"] },
   ];
 
   const PERSONS = [
@@ -91,6 +92,10 @@
     { id: "p5", name: "Leo Martins", email: "leo.martins@bluefin.example", title: "Data Lead", companyId: "co5" },
     { id: "p6", name: "Grace Okafor", email: "grace.okafor@pinecrest.example", title: "CIO", companyId: "co6" },
     { id: "p7", name: "Tomás Rivera", email: "tomas.rivera@lumenfreight.example", title: "Operations Manager", companyId: "co7" },
+    { id: "p9", name: "Priyanka Das", email: "priyanka.das@northwind.example", title: "Data Platform Owner", companyId: "co1", relationshipId: "re1" },
+    { id: "p10", name: "Marcus Weber", email: "marcus.weber@globex.example", title: "EMEA Program Lead", companyId: "co2", relationshipId: "re2" },
+    { id: "p11", name: "Owen Fischer", email: "owen.fischer@acmerobotics.example", title: "Fleet Ops Manager", companyId: "co4", relationshipId: "re3" },
+    { id: "p12", name: "Lina Haddad", email: "lina.haddad@pinecrest.example", title: "Portal Product Manager", companyId: "co6", relationshipId: "re4" },
   ].map((p) => ({ ...p, kind: "Person" }));
 
   const PEOPLE = [...USERS, ...PERSONS];
@@ -133,8 +138,16 @@
     },
   };
   const TYPE_KEYS = Object.keys(TYPES);
-  const OUTCOMES = ["Connected", "Left voicemail", "No answer"];
+  const NO_TYPE = { label: "", icon: "file", fg: "#4e5a6b", bg: "#eef1f5", notes: "Notes", placeholder: "Enter notes and @mention users", details: [], template: "" };
+  const typeCfg = (t) => TYPES[t] || NO_TYPE;
+  const OUTCOMES = ["Connected", "Left voicemail", "No answer", "Rescheduled"];
   const MILESTONES = ["Kickoff", "Onboarding complete", "Go-live", "QBR", "Renewal", "Expansion", "Risk flagged"];
+
+  function allowedTypes(entityId) {
+    if (!entityId) return [];
+    const rel = relById[entityId];
+    return rel ? rel.activityTypes : TYPE_KEYS;
+  }
 
   let ACTIVITIES = [
     {
@@ -271,7 +284,6 @@
     selectMode: false,
     selected: new Set(),
     lastLoggedId: null,
-    lastType: "Call",
   };
 
   /* ───────── Formatting ───────── */
@@ -290,7 +302,7 @@
   }
 
   function typeIcon(type, size = "md") {
-    const t = TYPES[type];
+    const t = typeCfg(type);
     return `<span class="type-icon ${size === "sm" ? "type-icon--sm" : ""}" style="--tc:${t.fg};--tb:${t.bg}" aria-hidden="true">${svg(t.icon, size === "sm" ? 14 : 16)}</span>`;
   }
 
@@ -982,7 +994,10 @@
     const e = entityInfo(a.entityId);
     const author = personById[a.authorId];
     const tasks = (a.tasks || []).length
-      ? `<h3 class="section-title">Tasks</h3>${a.tasks.map((t) => `<div class="task-view ${t.done ? "is-done" : ""}"><span class="task-view__check">${svg(t.done ? "checkCircle" : "circle", 18)}</span><span class="task-view__title">${esc(t.title)}</span>${t.due ? `<span class="task-view__due">Due ${esc(fmtDate(new Date(`${t.due}T00:00`).getTime()))}</span>` : ""}</div>`).join("")}`
+      ? `<h3 class="section-title">Tasks</h3>${a.tasks.map((t) => `<div class="task-view ${t.done ? "is-done" : ""}"><span class="task-view__check">${svg(t.done ? "checkCircle" : "circle", 18)}</span><span class="task-view__text"><span class="task-view__title">${esc(t.title)}</span>${t.assigneeId ? `<span class="task-view__assignee">${avatar(t.assigneeId, 20)}${esc(personById[t.assigneeId].name)}</span>` : ""}</span>${t.due ? `<span class="task-view__due">Due ${esc(fmtDate(new Date(`${t.due}T00:00`).getTime()))}</span>` : ""}</div>`).join("")}`
+      : "";
+    const files = (a.attachments || []).length
+      ? `<h3 class="section-title">Attachments <span class="muted">${a.attachments.length}</span></h3><div class="attachments">${a.attachments.map((f) => `<div class="attachment"><span class="attachment__icon">${svg("file", 16)}</span><span class="attachment__text"><span class="attachment__name">${esc(f.name)}</span><span class="attachment__size">${esc(fmtSize(f.size))}</span></span></div>`).join("")}</div>`
       : "";
 
     openPanel(`
@@ -1003,6 +1018,7 @@
           <div class="detail__byline">${avatar(author, 28)}<span><b>${esc(author.name)}</b> · ${esc(fmtFull(a.date))}</span></div>
           ${factsHtml(a)}
           <div class="richtext" data-notes>${a.notes}</div>
+          ${files}
           ${tasks}
           <h3 class="section-title">Comments <span class="muted" data-comment-count>${a.comments.length}</span></h3>
           <div class="comments" data-comment-list>${commentsHtml(a)}</div>
@@ -1117,10 +1133,9 @@
 
   function newComp() {
     const now = Date.now();
-    const type = state.lastType;
     return {
       draftId: null,
-      type,
+      type: "",
       entityId: state.token?.kind === "entity" ? state.token.id : null,
       subject: "",
       date: toDateInput(now),
@@ -1130,21 +1145,44 @@
       outcome: "",
       location: "",
       milestoneType: "",
-      internal: type === "Call" || type === "Meeting" ? [ME] : [],
+      internal: [],
       external: [],
       to: [],
       cc: [],
       tasks: [],
+      attachments: [],
     };
   }
 
   function normalizeDraft(d) {
     const base = newComp();
     const t = d.updatedAt || Date.now();
-    return { ...base, date: toDateInput(t), time: toTimeInput(t), ...clone(d) };
+    const out = { ...base, date: toDateInput(t), time: toTimeInput(t), ...clone(d) };
+    out.tasks = (out.tasks || []).map((task) => ({ assigneeId: ME, ...task }));
+    out.attachments = out.attachments || [];
+    return out;
   }
 
-  const isDirty = () => !!(comp.entityId || comp.subject.trim() || stripHtml(comp.notes) || comp.tasks.some((t) => t.title.trim()));
+  const notesFilled = () => !!(stripHtml(comp.notes) || /class="mention"/.test(comp.notes || ""));
+  const isDirty = () => !!(comp.entityId || comp.subject.trim() || notesFilled() || comp.tasks.some((t) => t.title.trim()) || comp.attachments.length);
+
+  function contextPersons() {
+    const e = entityInfo(comp.entityId);
+    if (!e) return [];
+    const companyPersons = PERSONS.filter((p) => p.companyId === e.companyId && !p.relationshipId);
+    if (e.kind === "Company") return companyPersons.map((p) => ({ p, group: "Company persons" }));
+    const relPersons = PERSONS.filter((p) => p.relationshipId === e.id);
+    return [
+      ...relPersons.map((p) => ({ p, group: "Relationship persons" })),
+      ...companyPersons.map((p) => ({ p, group: "Company persons" })),
+    ];
+  }
+
+  function pruneExternal() {
+    const allowed = new Set(contextPersons().map((x) => x.p.id));
+    comp.external = comp.external.filter((id) => allowed.has(id));
+    comp.to = comp.to.filter((id) => allowed.has(id));
+  }
 
   function tokenLead(name, id) {
     if (name === "entity") {
@@ -1155,50 +1193,79 @@
   }
   const tokenLabel = (name, id) => (name === "entity" ? entityInfo(id).label : personById[id].name);
 
-  function tokenFieldHtml({ name, label, required, multi, placeholder }) {
+  const TOKEN_FIELDS = {
+    entity: { label: "Company / Relationship", required: true, multi: false, placeholder: "Search companies and relationships", error: "Choose a company or relationship" },
+    internal: { label: "Internal attendees", multi: true, placeholder: "Add users" },
+    external: { label: "External attendees", multi: true, placeholder: "Add company or relationship persons", needsEntity: true },
+    to: { label: "To", multi: true, placeholder: "Add company or relationship persons", needsEntity: true },
+    cc: { label: "CC", multi: true, placeholder: "Add users" },
+  };
+
+  function tokenFieldHtml(name) {
+    const def = TOKEN_FIELDS[name];
     const values = name === "entity" ? (comp.entityId ? [comp.entityId] : []) : comp[name];
-    const filled = !multi && values.length > 0;
+    const filled = !def.multi && values.length > 0;
+    const locked = def.needsEntity && !comp.entityId;
+    const placeholder = locked ? "Select a company or relationship first" : def.placeholder;
     const tokens = values.map((id) => `
       <span class="token">${tokenLead(name, id)}<span class="token__label">${esc(tokenLabel(name, id))}</span>
         <button type="button" class="token__x" data-token-remove="${name}" data-id="${id}" aria-label="Remove ${esc(tokenLabel(name, id))}">${svg("x", 12)}</button>
       </span>`).join("");
     return `
       <div class="field" data-field="${name}">
-        <label class="field__label" for="tf-${name}">${esc(label)}${required ? '<span class="req">*</span>' : ""}</label>
-        <div class="token-input" data-token-box="${name}">
+        <label class="field__label" for="tf-${name}">${esc(def.label)}${def.required ? '<span class="req">*</span>' : ""}</label>
+        <div class="token-input ${locked ? "is-disabled" : ""}" data-token-box="${name}">
           ${tokens}
-          <input id="tf-${name}" class="token-input__input" data-token-input="${name}" autocomplete="off" placeholder="${values.length && multi ? "" : esc(placeholder)}" ${filled ? "hidden" : ""}>
-          ${!multi && !filled ? `<span class="token-input__icon">${svg("search", 16)}</span>` : ""}
+          <input id="tf-${name}" class="token-input__input" data-token-input="${name}" autocomplete="off"
+                 placeholder="${values.length && def.multi ? "" : esc(placeholder)}" ${filled ? "hidden" : ""} ${locked ? "disabled" : ""}>
+          ${!def.multi && !filled ? `<span class="token-input__icon">${svg("search", 16)}</span>` : ""}
         </div>
         <div class="token-pop" data-token-pop="${name}" hidden></div>
-        ${required ? `<div class="field__error">Choose a company or relationship</div>` : ""}
+        ${def.error ? `<div class="field__error">${esc(def.error)}</div>` : ""}
       </div>`;
   }
 
-  const TOKEN_FIELDS = {
-    entity: { label: "Company / Relationship", required: true, multi: false, placeholder: "Search companies and relationships" },
-    internal: { label: "Internal attendees", multi: true, placeholder: "Add teammates" },
-    external: { label: "External attendees", multi: true, placeholder: "Add customer contacts" },
-    to: { label: "To", multi: true, placeholder: "Add recipients" },
-    cc: { label: "CC (internal)", multi: true, placeholder: "Add teammates" },
-  };
+  function selectHtml({ name, label, options, value, placeholder, required = false, disabled = false, hint = "", error = "" }) {
+    return `
+      <div class="field" data-field="${name}">
+        <label class="field__label" for="f-${name}">${esc(label)}${required ? '<span class="req">*</span>' : ""}</label>
+        <div class="select">
+          <select class="input select__input ${value ? "" : "is-empty"}" id="f-${name}" data-select="${name}" ${disabled ? "disabled" : ""}>
+            <option value="" ${value ? "" : "selected"} ${required ? "disabled" : ""}>${esc(placeholder)}</option>
+            ${options.map((o) => `<option value="${esc(o.value)}" ${o.value === value ? "selected" : ""}>${esc(o.label)}</option>`).join("")}
+          </select>
+          <span class="select__chev">${svg("chevronDown", 16)}</span>
+        </div>
+        ${hint ? `<div class="field__hint">${esc(hint)}</div>` : ""}
+        ${error ? `<div class="field__error">${esc(error)}</div>` : ""}
+      </div>`;
+  }
 
   function fieldHtml(name) {
-    if (TOKEN_FIELDS[name]) {
-      const cfg = { ...TOKEN_FIELDS[name] };
-      if ((name === "external" || name === "to") && comp.entityId) cfg.placeholder = `Contacts at ${entityInfo(comp.entityId).companyName}`;
-      return tokenFieldHtml({ name, ...cfg });
-    }
+    if (TOKEN_FIELDS[name]) return tokenFieldHtml(name);
     switch (name) {
-      case "subject": {
-        const ph = { Call: "e.g. Renewal pricing walkthrough", Meeting: "e.g. Quarterly business review", Email: "Email subject line", Update: "What’s the update?", Milestone: "e.g. Go-live completed" }[comp.type];
+      case "type": {
+        const allowed = allowedTypes(comp.entityId);
+        const rel = relById[comp.entityId];
+        return selectHtml({
+          name: "type",
+          label: "Activity type",
+          required: true,
+          disabled: !comp.entityId,
+          value: comp.type,
+          placeholder: comp.entityId ? "Select activity type" : "Select a company or relationship first",
+          options: allowed.map((t) => ({ value: t, label: TYPES[t].label })),
+          hint: rel ? `Types available for ${rel.relType} relationships` : "",
+          error: "Choose an activity type",
+        });
+      }
+      case "subject":
         return `
           <div class="field" data-field="subject">
-            <label class="field__label" for="f-subject">${comp.type === "Email" ? "Email subject" : "Subject"}<span class="req">*</span></label>
-            <input class="input" id="f-subject" data-bind="subject" value="${esc(comp.subject)}" placeholder="${esc(ph)}" autocomplete="off">
+            <label class="field__label" for="f-subject">Subject<span class="req">*</span></label>
+            <input class="input" id="f-subject" data-bind="subject" value="${esc(comp.subject)}" placeholder="Enter text" autocomplete="off">
             <div class="field__error">Add a subject</div>
           </div>`;
-      }
       case "datetime":
         return `
           <div class="field" data-field="datetime">
@@ -1211,67 +1278,101 @@
       case "duration":
         return `
           <div class="field" data-field="duration">
-            <label class="field__label" for="f-duration">Duration</label>
-            <div class="input-affix">
-              <input type="number" inputmode="numeric" min="0" class="input" id="f-duration" data-bind="duration" value="${esc(comp.duration)}" placeholder="0">
-              <span class="input-affix__suffix">min</span>
-            </div>
-            <div class="quick">${[15, 30, 45, 60].map((n) => `<button type="button" class="quick__btn ${+comp.duration === n ? "is-active" : ""}" data-duration="${n}">${n} min</button>`).join("")}</div>
+            <label class="field__label" for="f-duration">Duration (in mins)</label>
+            <input type="number" inputmode="numeric" min="0" step="1" class="input" id="f-duration" data-bind="duration" value="${esc(comp.duration)}" placeholder="Enter duration">
           </div>`;
       case "outcome":
-        return `
-          <div class="field" data-field="outcome">
-            <label class="field__label">Call outcome</label>
-            <div class="segmented">${OUTCOMES.map((o) => `<button type="button" class="${comp.outcome === o ? "is-active" : ""}" data-outcome="${o}">${o}</button>`).join("")}</div>
-          </div>`;
+        return selectHtml({
+          name: "outcome",
+          label: "Call outcome",
+          value: comp.outcome,
+          placeholder: "Select outcome",
+          options: OUTCOMES.map((o) => ({ value: o, label: o })),
+        });
       case "location":
         return `
           <div class="field" data-field="location">
             <label class="field__label" for="f-location">Location</label>
-            <div class="input-affix">
-              <span class="input-affix__prefix">${svg("mapPin", 16)}</span>
-              <input class="input" id="f-location" data-bind="location" value="${esc(comp.location)}" placeholder="Zoom link, office, or address" autocomplete="off">
-            </div>
+            <input class="input" id="f-location" data-bind="location" value="${esc(comp.location)}" placeholder="Enter text" autocomplete="off">
           </div>`;
       case "milestoneType":
-        return `
-          <div class="field" data-field="milestoneType">
-            <label class="field__label">Milestone type</label>
-            <div class="pill-grid">${MILESTONES.map((m) => `<button type="button" class="quick__btn ${comp.milestoneType === m ? "is-active" : ""}" data-milestone="${m}">${m}</button>`).join("")}</div>
-          </div>`;
+        return selectHtml({
+          name: "milestoneType",
+          label: "Milestone type",
+          value: comp.milestoneType,
+          placeholder: "Select milestone",
+          options: MILESTONES.map((m) => ({ value: m, label: m })),
+        });
       default:
         return "";
     }
   }
 
   function detailsHtml() {
-    const cfg = TYPES[comp.type];
+    const cfg = typeCfg(comp.type);
     if (!cfg.details.length) return "";
     return `<h3 class="block__title">${cfg.label} details</h3>${cfg.details.map(fieldHtml).join("")}`;
   }
 
+  const ASSIGNABLE = () => USERS.filter((u) => !u.system);
+
   function tasksHtml() {
     return comp.tasks.map((t) => `
       <div class="task" data-task="${t.id}">
-        <button type="button" class="task__check ${t.done ? "is-done" : ""}" data-task-toggle aria-label="Mark done">${svg(t.done ? "checkCircle" : "circle", 18)}</button>
-        <input class="task__title" data-task-title value="${esc(t.title)}" placeholder="Task name" autocomplete="off">
-        <input type="date" class="task__due" data-task-due value="${t.due}" aria-label="Due date">
-        <button type="button" class="icon-btn icon-btn--sm" data-task-remove aria-label="Remove task">${svg("x", 14)}</button>
+        <div class="task__row">
+          <button type="button" class="task__check ${t.done ? "is-done" : ""}" data-task-toggle aria-label="Mark done">${svg(t.done ? "checkCircle" : "circle", 18)}</button>
+          <input class="task__title" data-task-title value="${esc(t.title)}" placeholder="Task name" autocomplete="off">
+          <button type="button" class="icon-btn icon-btn--sm" data-task-remove aria-label="Remove task">${svg("x", 14)}</button>
+        </div>
+        <div class="task__meta">
+          <label class="task__assignee">
+            ${avatar(t.assigneeId || ME, 22)}
+            <select data-task-assignee aria-label="Assign to">
+              ${ASSIGNABLE().map((u) => `<option value="${u.id}" ${u.id === (t.assigneeId || ME) ? "selected" : ""}>${esc(u.name)}${u.id === ME ? " (you)" : ""}</option>`).join("")}
+            </select>
+            ${svg("chevronDown", 14)}
+          </label>
+          <input type="date" class="task__due" data-task-due value="${t.due}" aria-label="Due date">
+        </div>
       </div>`).join("");
   }
 
+  const fmtSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+
+  function attachmentsHtml() {
+    return comp.attachments.map((f) => `
+      <div class="attachment" data-attachment="${f.id}">
+        <span class="attachment__icon">${svg("file", 16)}</span>
+        <span class="attachment__text"><span class="attachment__name">${esc(f.name)}</span><span class="attachment__size">${esc(fmtSize(f.size))}</span></span>
+        <button type="button" class="icon-btn icon-btn--sm" data-attachment-remove aria-label="Remove ${esc(f.name)}">${svg("x", 14)}</button>
+      </div>`).join("");
+  }
+
+  function templateState() {
+    if (!comp.type) return { disabled: true, title: "Select an activity type to use its template" };
+    if (notesFilled()) return { disabled: true, title: "Templates can only be applied to empty notes" };
+    return { disabled: false, title: `Apply the ${typeCfg(comp.type).label} template` };
+  }
+
+  function syncTemplateBtn() {
+    const btn = $("[data-apply-template]", compRoot);
+    if (!btn) return;
+    const s = templateState();
+    btn.disabled = s.disabled;
+    btn.title = s.title;
+  }
+
   function composerHtml() {
-    const cfg = TYPES[comp.type];
+    const cfg = typeCfg(comp.type);
+    const tpl = templateState();
     const toolbar = [["bold", "bold"], ["italic", "italic"], ["underline", "underline"], ["insertUnorderedList", "list"], ["insertOrderedList", "listOrdered"], ["mention", "at"]]
-      .map(([cmd, icon]) => `<button type="button" data-cmd="${cmd}" aria-label="${cmd}">${svg(icon, 16)}</button>`).join("");
+      .map(([cmd, icon]) => `<button type="button" data-cmd="${cmd}" aria-label="${cmd}">${svg(icon, 16)}</button>`).join("")
+      + `<button type="button" data-attach aria-label="Attach file">${svg("paperclip", 16)}</button>`;
     return `
       <div class="panel__header">
         <button type="button" class="icon-btn" data-composer-close aria-label="Close">${svg("x", 20)}</button>
         <div class="panel__heading"><span>${comp.draftId ? "Edit draft" : "New activity"}</span></div>
         <span class="save-state" data-save-state>${comp.draftId ? "Draft" : ""}</span>
-      </div>
-      <div class="composer__types" role="radiogroup" aria-label="Activity type">
-        ${TYPE_KEYS.map((t) => `<button type="button" role="radio" aria-checked="${t === comp.type}" class="type-pill ${t === comp.type ? "is-active" : ""}" data-type="${t}" style="--tc:${TYPES[t].fg};--tb:${TYPES[t].bg}">${svg(TYPES[t].icon, 16)}${TYPES[t].label}</button>`).join("")}
       </div>
       <div class="panel__body">
         <div class="composer__grid">
@@ -1280,7 +1381,7 @@
               <div class="field" data-field="notes">
                 <div class="field__label-row">
                   <label class="field__label" data-notes-label>${esc(cfg.notes)}<span class="req">*</span></label>
-                  <button type="button" class="link-btn" data-apply-template>Apply template</button>
+                  <button type="button" class="link-btn" data-apply-template ${tpl.disabled ? "disabled" : ""} title="${esc(tpl.title)}">Apply template</button>
                 </div>
                 <div class="editor">
                   <div class="editor__area" data-editor contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="${esc(cfg.placeholder)}">${comp.notes}</div>
@@ -1289,6 +1390,14 @@
                 </div>
                 <div class="field__error">Add some notes</div>
               </div>
+            </section>
+            <section class="block block--attachments">
+              <div class="block__title-row">
+                <h3 class="block__title">Attachments</h3>
+                <button type="button" class="btn btn--outline btn--sm" data-attach>${svg("paperclip", 14)} Add attachment</button>
+              </div>
+              <input type="file" multiple hidden data-file-input>
+              <div class="attachments" data-attachments>${attachmentsHtml()}</div>
             </section>
             <section class="block block--tasks">
               <h3 class="block__title">Tasks</h3>
@@ -1299,6 +1408,7 @@
           <div class="col col--right">
             <section class="block block--core">
               ${fieldHtml("entity")}
+              ${fieldHtml("type")}
               ${fieldHtml("subject")}
               ${fieldHtml("datetime")}
             </section>
@@ -1325,23 +1435,35 @@
     if (el) el.outerHTML = fieldHtml(name);
   }
 
-  function setType(t) {
-    if (t === comp.type) return;
-    comp.type = t;
-    state.lastType = t;
-    if ((t === "Call" || t === "Meeting") && !comp.internal.length) comp.internal = [ME];
-    $$(".type-pill", compRoot).forEach((b) => {
-      const on = b.dataset.type === t;
-      b.classList.toggle("is-active", on);
-      b.setAttribute("aria-checked", String(on));
-    });
-    const cfg = TYPES[t];
-    $("[data-notes-label]", compRoot).innerHTML = `${esc(cfg.notes)}<span class="req">*</span>`;
-    $("[data-editor]", compRoot).dataset.placeholder = cfg.placeholder;
-    rerenderField("subject");
+  function renderDetailsBlock() {
+    const cfg = typeCfg(comp.type);
     const details = $("[data-details]", compRoot);
     details.innerHTML = detailsHtml();
     details.classList.toggle("is-empty", !cfg.details.length);
+  }
+
+  function setType(t) {
+    if (t === comp.type) return;
+    comp.type = t;
+    if ((t === "Call" || t === "Meeting") && !comp.internal.length) comp.internal = [ME];
+    const cfg = typeCfg(t);
+    $("[data-notes-label]", compRoot).innerHTML = `${esc(cfg.notes)}<span class="req">*</span>`;
+    $("[data-editor]", compRoot).dataset.placeholder = cfg.placeholder;
+    $('[data-field="type"]', compRoot)?.classList.remove("has-error");
+    renderDetailsBlock();
+    syncTemplateBtn();
+  }
+
+  function onEntityChanged() {
+    if (comp.type && !allowedTypes(comp.entityId).includes(comp.type)) {
+      const prev = typeCfg(comp.type).label;
+      setType("");
+      if (comp.entityId) toast(`${prev} isn’t available here — pick another activity type`);
+    }
+    pruneExternal();
+    rerenderField("type");
+    renderDetailsBlock();
+    syncTemplateBtn();
   }
 
   function tokenOptions(name, q) {
@@ -1354,32 +1476,25 @@
     }
     const selected = comp[name];
     if (name === "internal" || name === "cc") {
-      return USERS.filter((u) => !u.system && !selected.includes(u.id))
+      return ASSIGNABLE().filter((u) => !selected.includes(u.id))
         .filter((u) => !q || `${u.name} ${u.email}`.toLowerCase().includes(q))
-        .map((u) => ({ id: u.id, group: "Teammates", title: u.name + (u.id === ME ? " (you)" : ""), sub: u.title, lead: avatar(u, 28) }));
+        .map((u) => ({ id: u.id, group: null, title: u.name + (u.id === ME ? " (you)" : ""), sub: u.email, lead: avatar(u, 28) }));
     }
-    const cid = comp.entityId ? entityInfo(comp.entityId).companyId : null;
-    return PERSONS.filter((p) => !selected.includes(p.id))
-      .filter((p) => !q || `${p.name} ${p.email} ${companyById[p.companyId].name}`.toLowerCase().includes(q))
-      .sort((a, b) => (b.companyId === cid) - (a.companyId === cid))
-      .map((p) => ({
-        id: p.id,
-        group: cid && p.companyId === cid ? `At ${companyById[cid].name}` : "Other contacts",
-        title: p.name,
-        sub: `${p.title} · ${companyById[p.companyId].name}`,
-        lead: avatar(p, 28),
-      }));
+    return contextPersons()
+      .filter(({ p }) => !selected.includes(p.id))
+      .filter(({ p }) => !q || `${p.name} ${p.email}`.toLowerCase().includes(q))
+      .map(({ p, group }) => ({ id: p.id, group, title: p.name, sub: `${p.title} · ${p.email}`, lead: avatar(p, 28) }));
   }
 
   function renderTokenPop(name, q) {
     $$("[data-token-pop]", compRoot).forEach((p) => { if (p.dataset.tokenPop !== name) p.hidden = true; });
     const pop = $(`[data-token-pop="${name}"]`, compRoot);
     if (!pop) return;
-    const opts = tokenOptions(name, q).slice(0, 10);
+    const opts = tokenOptions(name, q).slice(0, 12);
     let html = "";
-    let group = null;
+    let group;
     opts.forEach((o, i) => {
-      if (o.group !== group) { group = o.group; html += `<div class="results__group">${esc(group)}</div>`; }
+      if (o.group && o.group !== group) { group = o.group; html += `<div class="results__group">${esc(group)}</div>`; }
       html += `<button type="button" class="result ${i === 0 ? "is-active" : ""}" data-token-option="${name}" data-id="${o.id}">${o.lead}<span class="result__text"><span class="result__title">${hl(o.title, q.trim())}</span><span class="result__sub">${esc(o.sub)}</span></span></button>`;
     });
     pop.innerHTML = html || `<div class="results__empty">No matches</div>`;
@@ -1391,25 +1506,25 @@
     const def = TOKEN_FIELDS[name];
     if (name === "entity") {
       comp.entityId = id;
-      $('[data-field="entity"]', compRoot).classList.remove("has-error");
       rerenderField("entity");
-      ["external", "to"].forEach((n) => { if ($(`[data-field="${n}"]`, compRoot)) rerenderField(n); });
-      if (!comp.subject) $("#f-subject", compRoot)?.focus();
+      onEntityChanged();
+      setTimeout(() => $("#f-type", compRoot)?.focus(), 0);
       return;
     }
     if (!comp[name].includes(id)) comp[name].push(id);
     rerenderField(name);
-    if (def.multi) {
-      const input = $(`[data-token-input="${name}"]`, compRoot);
-      input.focus();
-    }
+    if (def.multi) $(`[data-token-input="${name}"]`, compRoot)?.focus();
   }
 
   function removeToken(name, id) {
-    if (name === "entity") comp.entityId = null;
-    else comp[name] = comp[name].filter((x) => x !== id);
-    rerenderField(name);
-    if (name === "entity") ["external", "to"].forEach((n) => { if ($(`[data-field="${n}"]`, compRoot)) rerenderField(n); });
+    if (name === "entity") {
+      comp.entityId = null;
+      rerenderField("entity");
+      onEntityChanged();
+    } else {
+      comp[name] = comp[name].filter((x) => x !== id);
+      rerenderField(name);
+    }
     $(`[data-token-input="${name}"]`, compRoot)?.focus();
   }
 
@@ -1440,6 +1555,7 @@
       sel.addRange(caret);
       pop.hidden = true;
       comp.notes = editor.innerHTML;
+      syncTemplateBtn();
       editor.focus();
     });
   }
@@ -1448,19 +1564,40 @@
     compRoot = sheet;
     const editor = $("[data-editor]", sheet);
     const editorPop = $("[data-editor-mention]", sheet);
+    const fileInput = $("[data-file-input]", sheet);
+
+    fileInput.addEventListener("change", () => {
+      const files = Array.from(fileInput.files || []);
+      files.forEach((f) => comp.attachments.push({ id: uid("f"), name: f.name, size: f.size }));
+      fileInput.value = "";
+      $("[data-attachments]", sheet).innerHTML = attachmentsHtml();
+      if (files.length) toast(`${files.length} file${files.length > 1 ? "s" : ""} attached`);
+    });
+
+    sheet.addEventListener("change", (e) => {
+      const t = e.target;
+      if (t.dataset.select) t.classList.toggle("is-empty", !t.value);
+      if (t.dataset.select === "type") { setType(t.value); return; }
+      if (t.dataset.select) { comp[t.dataset.select] = t.value; return; }
+      if (t.matches("[data-task-assignee]")) {
+        const task = comp.tasks.find((x) => x.id === t.closest("[data-task]").dataset.task);
+        task.assigneeId = t.value;
+        $("#task-list", sheet).innerHTML = tasksHtml();
+      }
+    });
 
     sheet.addEventListener("input", (e) => {
       const t = e.target;
       if (t.dataset.bind) {
         comp[t.dataset.bind] = t.value;
         t.closest(".field")?.classList.remove("has-error");
-        if (t.dataset.bind === "duration") $$("[data-duration]", sheet).forEach((b) => b.classList.toggle("is-active", +b.dataset.duration === +t.value));
       } else if (t.dataset.tokenInput) {
         renderTokenPop(t.dataset.tokenInput, t.value);
       } else if (t === editor) {
         if (!stripHtml(editor.innerHTML) && !editor.querySelector(".mention, li")) editor.innerHTML = "";
         comp.notes = editor.innerHTML;
         editor.closest(".field").classList.remove("has-error");
+        syncTemplateBtn();
         checkEditorMention(editor, editorPop);
       } else if (t.matches("[data-task-title], [data-task-due]")) {
         const task = comp.tasks.find((x) => x.id === t.closest("[data-task]").dataset.task);
@@ -1519,8 +1656,6 @@
 
     sheet.addEventListener("click", (e) => {
       const t = e.target;
-      const typeBtn = t.closest("[data-type]");
-      if (typeBtn) { setType(typeBtn.dataset.type); return; }
 
       const rm = t.closest("[data-token-remove]");
       if (rm) { removeToken(rm.dataset.tokenRemove, rm.dataset.id); return; }
@@ -1528,33 +1663,15 @@
       const box = t.closest("[data-token-box]");
       if (box && !t.closest(".token")) {
         const input = $("[data-token-input]", box);
-        if (!input.hidden) input.focus();
+        if (!input.hidden && !input.disabled) input.focus();
         return;
       }
 
-      const dur = t.closest("[data-duration]");
-      if (dur) {
-        comp.duration = dur.dataset.duration;
-        $("#f-duration", sheet).value = comp.duration;
-        $$("[data-duration]", sheet).forEach((b) => b.classList.toggle("is-active", b === dur));
-        return;
-      }
-
-      const out = t.closest("[data-outcome]");
-      if (out) {
-        comp.outcome = comp.outcome === out.dataset.outcome ? "" : out.dataset.outcome;
-        $$("[data-outcome]", sheet).forEach((b) => b.classList.toggle("is-active", b.dataset.outcome === comp.outcome));
-        return;
-      }
-
-      const ms = t.closest("[data-milestone]");
-      if (ms) {
-        comp.milestoneType = ms.dataset.milestone;
-        $$("[data-milestone]", sheet).forEach((b) => b.classList.toggle("is-active", b === ms));
-        if (!comp.subject.trim()) {
-          comp.subject = `${comp.milestoneType} completed`;
-          $("#f-subject", sheet).value = comp.subject;
-        }
+      if (t.closest("[data-attach]")) { fileInput.click(); return; }
+      const att = t.closest("[data-attachment]");
+      if (att && t.closest("[data-attachment-remove]")) {
+        comp.attachments = comp.attachments.filter((f) => f.id !== att.dataset.attachment);
+        $("[data-attachments]", sheet).innerHTML = attachmentsHtml();
         return;
       }
 
@@ -1568,19 +1685,22 @@
           document.execCommand(cmd.dataset.cmd, false, null);
         }
         comp.notes = editor.innerHTML;
+        syncTemplateBtn();
         return;
       }
 
       if (t.closest("[data-apply-template]")) {
-        editor.innerHTML = (stripHtml(editor.innerHTML) ? editor.innerHTML : "") + TYPES[comp.type].template;
+        if (templateState().disabled) return;
+        editor.innerHTML = typeCfg(comp.type).template;
         comp.notes = editor.innerHTML;
         editor.closest(".field").classList.remove("has-error");
+        syncTemplateBtn();
         editor.focus();
         return;
       }
 
       if (t.closest("[data-add-task]")) {
-        const task = { id: uid("t"), title: "", due: "", done: false };
+        const task = { id: uid("t"), title: "", due: "", done: false, assigneeId: ME };
         comp.tasks.push(task);
         $("#task-list", sheet).innerHTML = tasksHtml();
         $(`[data-task="${task.id}"] [data-task-title]`, sheet).focus();
@@ -1605,7 +1725,7 @@
       if (t.closest("[data-composer-log]")) { logActivity(); }
     });
 
-    if (isDesktop()) setTimeout(() => (comp.entityId ? editor : $("#tf-entity", sheet))?.focus(), 260);
+    if (isDesktop()) setTimeout(() => (comp.entityId ? $("#f-type", sheet) : $("#tf-entity", sheet))?.focus(), 260);
   }
 
   function saveDraft() {
@@ -1649,8 +1769,9 @@
   function logActivity() {
     const errors = [];
     if (!comp.entityId) errors.push("entity");
+    if (!comp.type) errors.push("type");
     if (!comp.subject.trim()) errors.push("subject");
-    if (!stripHtml(comp.notes) && !/class="mention"/.test(comp.notes)) errors.push("notes");
+    if (!notesFilled()) errors.push("notes");
     $$(".field.has-error", compRoot).forEach((f) => f.classList.remove("has-error"));
     errors.forEach((n) => $(`[data-field="${n}"]`, compRoot)?.classList.add("has-error"));
     if (errors.length) {
@@ -1658,7 +1779,7 @@
       toast(`Complete ${errors.length} required field${errors.length > 1 ? "s" : ""}`);
       return;
     }
-    const cfg = TYPES[comp.type];
+    const cfg = typeCfg(comp.type);
     const a = {
       id: uid("a"),
       type: comp.type,
@@ -1668,6 +1789,7 @@
       authorId: ME,
       date: new Date(`${comp.date}T${comp.time || "00:00"}`).getTime() || Date.now(),
       tasks: comp.tasks.filter((t) => t.title.trim()),
+      attachments: clone(comp.attachments),
       comments: [],
     };
     cfg.details.forEach((k) => {
