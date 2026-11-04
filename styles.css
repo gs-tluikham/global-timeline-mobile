@@ -145,8 +145,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .drafts-btn:hover { background: var(--bg); color: var(--text); }
 .drafts-btn__label { display: none; font-weight: 500; }
 .drafts-btn__count {
-  min-width: 20px;
-  height: 20px;
+  min-width: 22px;
+  height: 22px;
   padding: 0 6px;
   border-radius: 999px;
   background: var(--danger);
