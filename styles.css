@@ -118,14 +118,15 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .view-switch {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin: 2px 0 0 -6px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-2);
-  max-width: 60vw;
+  gap: 6px;
+  margin: 6px 0 0 -8px;
+  padding: 8px 12px;
+  min-height: 40px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  max-width: 70vw;
 }
 .view-switch span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .view-switch:hover { background: var(--bg); color: var(--text); }

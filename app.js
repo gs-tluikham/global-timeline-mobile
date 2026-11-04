@@ -1823,7 +1823,7 @@
   /* ───────── Init ───────── */
   function init() {
     $$("[data-icon]").forEach((el) => {
-      const size = el.closest(".fab") || el.classList.contains("fab") ? 24 : el.closest(".view-switch") ? 14 : 18;
+      const size = el.closest(".fab") || el.classList.contains("fab") ? 24 : el.closest(".view-switch") ? 18 : 18;
       el.insertAdjacentHTML("afterbegin", svg(el.dataset.icon, size));
     });
 
