@@ -610,7 +610,7 @@
     const summary = feedSummary(list.length);
     feed.innerHTML =
       (summary ? `<div class="feed__summary">${summary}</div>` : "") +
-      `<div class="group__list">${list.map(cardHtml).join("")}</div>`;
+      `<div class="feed__list">${list.map(cardHtml).join("")}</div>`;
     if (state.lastLoggedId) setTimeout(() => { state.lastLoggedId = null; }, 2500);
   }
 

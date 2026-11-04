@@ -410,6 +410,17 @@ kbd {
   border-radius: var(--radius);
   overflow: hidden;
 }
+.feed__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.feed__list .item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.feed__list .item:first-child { border-top: 1px solid var(--border); }
 
 .item {
   display: flex;
