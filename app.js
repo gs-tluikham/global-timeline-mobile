@@ -584,7 +584,17 @@
       </article>`;
   }
 
+  function isFeedFiltered() {
+    return !!(
+      contentQuery() ||
+      state.token ||
+      state.types.size !== TYPE_KEYS.length ||
+      state.date.preset !== "anytime"
+    );
+  }
+
   function feedSummary(count) {
+    if (!isFeedFiltered()) return "";
     const q = contentQuery();
     if (q) return `${count} result${count === 1 ? "" : "s"} for <b>“${esc(q)}”</b>`;
     if (state.token?.kind === "entity") return `${count} activit${count === 1 ? "y" : "ies"} for <b>${esc(entityInfo(state.token.id).label)}</b>`;
@@ -612,8 +622,9 @@
       if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
       g.items.push(a);
     });
+    const summary = feedSummary(list.length);
     feed.innerHTML =
-      `<div class="feed__summary">${feedSummary(list.length)}</div>` +
+      (summary ? `<div class="feed__summary">${summary}</div>` : "") +
       groups.map((g) => `
         <section class="group">
           <h2 class="group__label">${esc(g.label)}</h2>
