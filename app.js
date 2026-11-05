@@ -14,7 +14,8 @@
   /* ───────── Helpers ───────── */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-  const isDesktop = () => window.matchMedia("(min-width: 768px)").matches;
+  const isWide = () => window.matchMedia("(min-width: 600px)").matches;
+  const isSplit = () => window.matchMedia("(min-width: 1024px)").matches;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const stripHtml = (html) => {
@@ -227,6 +228,11 @@
     { id: "v3", name: "Customer Emails", section: "Admin defined views", types: ["Email"] },
     { id: "v4", name: "My last 30 days", section: "Custom views", date: "last30" },
     { id: "v5", name: "Updates this week", section: "Custom views", types: ["Update"], date: "thisweek" },
+    { id: "v6", name: "Renewals this month", section: "Custom views", date: "last30" },
+    { id: "v7", name: "Executive sponsors", section: "Custom views", types: ["Meeting", "Email"] },
+    { id: "v8", name: "Onboarding", section: "Custom views", types: ["Milestone", "Meeting"] },
+    { id: "v9", name: "Support follow-ups", section: "Custom views", types: ["Email", "Update"] },
+    { id: "v10", name: "Quarterly reviews", section: "Custom views", types: ["Meeting"] },
   ];
 
   const DATE_PRESETS = [
@@ -257,6 +263,9 @@
     selectMode: false,
     selected: new Set(),
     lastLoggedId: null,
+    advanced: { comments: false, tasks: false, mine: false },
+    shown: 6,
+    feedKey: "",
   };
 
   /* ───────── Formatting ───────── */
@@ -422,38 +431,30 @@
   /* ───────── Sheet (bottom sheet on mobile, popover on desktop) ───────── */
   let sheetOpen = false;
 
-  function openSheet({ title = "", body = "", footer = "", anchor = null, width = 320, dialog = false, onMount }) {
+  function openSheet({ title = "", body = "", footer = "", dialog = false, full = false, onMount }) {
     const replacing = sheetOpen;
     closeSheet();
     if (!replacing) rememberOverlay("sheet");
-    const desktop = isDesktop();
-    const mode = dialog ? "sheet--dialog" : desktop && anchor ? "sheet--popover" : "";
-    const showHeader = title && (!desktop || dialog || !anchor);
+    const wide = isWide();
+    const asDialog = dialog || wide;
+    const mode = asDialog ? "sheet--dialog" : full ? "sheet--full" : "";
     const root = $("#sheet-root");
     root.innerHTML = `
       <div class="sheet ${mode}">
         <div class="sheet__backdrop" data-sheet-close></div>
         <div class="sheet__panel" role="dialog" aria-modal="true" aria-label="${esc(title)}">
-          ${!desktop && !dialog ? '<div class="sheet__grabber"></div>' : ""}
-          ${showHeader ? `<div class="sheet__header"><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-sheet-close aria-label="Close">${svg("x", 18)}</button></div>` : ""}
+          ${!asDialog && !full ? '<div class="sheet__grabber"></div>' : ""}
+          ${title ? `<div class="sheet__header"><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-sheet-close aria-label="Close">${svg("x", 18)}</button></div>` : ""}
           <div class="sheet__body">${body}</div>
           ${footer ? `<div class="sheet__footer">${footer}</div>` : ""}
         </div>
       </div>`;
     const panel = $(".sheet__panel", root);
-    if (mode === "sheet--popover") {
-      const r = anchor.getBoundingClientRect();
-      const w = Math.min(width, window.innerWidth - 24);
-      panel.style.width = `${w}px`;
-      panel.style.left = `${Math.max(12, Math.min(r.left, window.innerWidth - w - 12))}px`;
-      panel.style.top = `${r.bottom + 6}px`;
-      panel.style.maxHeight = `${Math.max(240, window.innerHeight - r.bottom - 24)}px`;
-    }
     $$("[data-sheet-close]", root).forEach((el) => el.addEventListener("click", dismissSheet));
     sheetOpen = true;
     onMount && onMount(panel);
     const first = panel.querySelector("input:not([type=date])");
-    if (first && desktop) first.focus();
+    if (first && wide) first.focus();
   }
 
   function closeSheet() {
@@ -465,6 +466,113 @@
     if (!sheetOpen) return;
     closeSheet();
     releaseOverlay("sheet");
+  }
+
+  /* ───────── Full-screen lookup (phone entity, people, and composer pickers) ───────── */
+  let pickerOpen = false;
+
+  function openPicker({ title, placeholder, rows, onPick }) {
+    const replacing = pickerOpen;
+    closePicker();
+    if (!replacing) rememberOverlay("picker");
+    const root = $("#picker-root");
+    root.innerHTML = `
+      <div class="picker">
+        <div class="panel__header">
+          <button type="button" class="icon-btn" data-picker-close aria-label="Back">${svg("chevronLeft", 20)}</button>
+          <div class="panel__heading"><span>${esc(title)}</span></div>
+        </div>
+        <div class="picker__search">
+          <span class="search__icon">${svg("search", 16)}</span>
+          <input type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(placeholder)}" aria-label="${esc(title)}" data-picker-input>
+        </div>
+        <div class="picker__list" data-picker-list></div>
+      </div>`;
+    const input = $("[data-picker-input]", root);
+    const list = $("[data-picker-list]", root);
+    let timer;
+    const paint = () => {
+      const q = input.value.trim();
+      if (q.length === 1) {
+        list.innerHTML = `<div class="results__empty">Type at least 2 characters</div>`;
+        return;
+      }
+      const opts = rows(q);
+      list.innerHTML = opts.length
+        ? opts.map((o) => `<button type="button" class="result" data-picker-id="${esc(o.id)}">${o.lead}<span class="result__text"><span class="result__title">${hl(o.title, q)}</span><span class="result__sub">${esc(o.sub)}</span></span></button>`).join("")
+        : `<div class="results__empty">${q ? `No matches for “${esc(q)}”` : "No matches"}</div>`;
+    };
+    input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(paint, 250); });
+    list.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-picker-id]");
+      if (!b) return;
+      onPick(b.dataset.pickerId);
+    });
+    $("[data-picker-close]", root).addEventListener("click", dismissPicker);
+    pickerOpen = true;
+    paint();
+    input.focus();
+  }
+
+  function closePicker() {
+    $("#picker-root").innerHTML = "";
+    pickerOpen = false;
+  }
+
+  function dismissPicker() {
+    if (!pickerOpen) return;
+    closePicker();
+    releaseOverlay("picker");
+  }
+
+  function openScopeLookup() {
+    const scope = state.scope;
+    openPicker({
+      title: SCOPES[scope].label,
+      placeholder: SCOPES[scope].placeholder,
+      rows: (q) => scopeRows(scope, q),
+      onPick: (id) => {
+        state.token = { kind: scope === "entity" ? "entity" : "person", id };
+        state.query = "";
+        searchInput.value = "";
+        dismissPicker();
+        renderSearch();
+        renderFeed();
+      },
+    });
+  }
+
+  function scopeRows(scope, q) {
+    const query = q.trim().toLowerCase();
+    const rows = [];
+    if (scope === "entity") {
+      COMPANIES.filter((c) => !query || c.name.toLowerCase().includes(query)).slice(0, 8).forEach((c) => {
+        rows.push({ id: c.id, lead: `<span class="ent-icon">${svg("building", 16)}</span>`, title: c.name, sub: `Company · ${personById[c.csm].name}` });
+      });
+      RELATIONSHIPS.filter((r) => !query || `${r.name} ${companyById[r.companyId].name}`.toLowerCase().includes(query)).slice(0, 8).forEach((r) => {
+        rows.push({ id: r.id, lead: `<span class="ent-icon">${svg("layers", 16)}</span>`, title: r.name, sub: companyById[r.companyId].name });
+      });
+    } else {
+      const match = (p) => !query || `${p.name} ${p.email}`.toLowerCase().includes(query);
+      PERSONS.filter(match).slice(0, 8).forEach((p) => rows.push({ id: p.id, lead: avatar(p, 32), title: p.name, sub: `${p.title} · ${companyById[p.companyId].name}` }));
+      USERS.filter((u) => !u.system && match(u)).slice(0, 6).forEach((u) => rows.push({ id: u.id, lead: avatar(u, 32), title: u.name, sub: u.email }));
+    }
+    return rows;
+  }
+
+  function openFieldPicker(name) {
+    const def = TOKEN_FIELDS[name];
+    if (!def || (def.needsEntity && !comp.entityId)) return;
+    openPicker({
+      title: def.label,
+      placeholder: def.placeholder,
+      rows: (q) => tokenOptions(name, q.trim()).map((o) => ({ id: o.id, lead: o.lead, title: o.title, sub: o.sub })),
+      onPick: (id) => {
+        addToken(name, id);
+        if (!def.multi) dismissPicker();
+        else openFieldPicker(name);
+      },
+    });
   }
 
   function checkbox(checked, ind = false) {
@@ -481,6 +589,7 @@
     document.body.classList.add("no-scroll");
     panelRequestClose = onRequestClose || closePanel;
     if (!replacing) rememberOverlay("panel");
+    document.body.classList.toggle("is-split", variant === "detail" && isSplit());
     $$("[data-panel-close]", root).forEach((el) => el.addEventListener("click", () => panelRequestClose()));
     onMount && onMount($(".panel__sheet", root));
   }
@@ -494,12 +603,12 @@
     const finish = () => {
       if (!$(".panel__sheet.is-leaving", root)) return;
       root.innerHTML = "";
-      document.body.classList.remove("no-scroll");
+      document.body.classList.remove("no-scroll", "is-split");
     };
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!sheet || reduce) {
       root.innerHTML = "";
-      document.body.classList.remove("no-scroll");
+      document.body.classList.remove("no-scroll", "is-split");
       return;
     }
     sheet.classList.add("is-leaving");
@@ -550,6 +659,9 @@
       const inComments = a.comments.some((c) => c.authorId === id || (c.text ?? stripHtml(c.html)).includes(`@${personById[id].name}`));
       if (!involvedIds(a).includes(id) && !inNotes && !inComments) return false;
     }
+    if (state.advanced.comments && !a.comments.length) return false;
+    if (state.advanced.tasks && !(a.tasks || []).length) return false;
+    if (state.advanced.mine && a.authorId !== ME) return false;
     return true;
   }
 
@@ -559,6 +671,11 @@
     const n = DRAFTS.length;
     $("#drafts-count").textContent = String(n);
     $("#drafts-count").hidden = n === 0;
+    const adv = Object.values(state.advanced).filter(Boolean).length;
+    const badge = $("#advanced-count");
+    badge.hidden = adv === 0;
+    badge.textContent = String(adv);
+    $("#advanced-btn").classList.toggle("is-active", adv > 0);
   }
 
   function typesLabel() {
@@ -638,6 +755,9 @@
 
   function renderFeed() {
     const list = ACTIVITIES.filter(matches).sort((a, b) => b.date - a.date);
+    const key = [state.viewId, [...state.types].sort().join(","), state.date.preset, state.date.start, state.date.end, contentQuery(), state.token?.id || "", Object.values(state.advanced).join()].join("|");
+    if (key !== state.feedKey) { state.feedKey = key; state.shown = 6; }
+    const shown = list.slice(0, state.shown);
     const feed = $("#feed");
     if (!list.length) {
       feed.innerHTML = `
@@ -650,9 +770,12 @@
       return;
     }
     const summary = feedSummary(list.length);
+    const more = shown.length < list.length
+      ? `<button type="button" class="load-more" data-load-more>Load more</button>`
+      : "";
     feed.innerHTML =
       (summary ? `<div class="feed__summary">${summary}</div>` : "") +
-      `<div class="feed__list">${list.map(cardHtml).join("")}</div>`;
+      `<div class="feed__list">${shown.map(cardHtml).join("")}</div>${more}`;
     if (state.lastLoggedId) setTimeout(() => { state.lastLoggedId = null; }, 2500);
   }
 
@@ -714,6 +837,13 @@
       return;
     }
     const q = state.query.trim().toLowerCase();
+    if (q.length === 1) {
+      box.hidden = false;
+      box.innerHTML = `<div class="results__empty">Type at least 2 characters</div>`;
+      resultItems = [];
+      activeIdx = -1;
+      return;
+    }
     const items = [];
     let html = "";
 
@@ -755,7 +885,7 @@
     }
 
     if (!items.length) html = `<div class="results__empty">No matches for “${esc(state.query)}”</div>`;
-    else if (isDesktop()) html += `<div class="results__hint"><kbd>↑</kbd><kbd>↓</kbd> navigate <kbd>↵</kbd> select <kbd>esc</kbd> close</div>`;
+    else if (isWide()) html += `<div class="results__hint"><kbd>↑</kbd><kbd>↓</kbd> navigate <kbd>↵</kbd> select <kbd>esc</kbd> close</div>`;
 
     resultItems = items;
     activeIdx = items.length ? 0 : -1;
@@ -800,18 +930,22 @@
     searchInput.focus();
   }
 
-  let feedDebounce;
+  let lookupTimer;
   function bindSearch() {
-    searchInput.addEventListener("focus", renderResults);
-    searchInput.addEventListener("input", () => {
-      state.query = searchInput.value;
-      $("#search-clear").hidden = !state.query;
-      if (state.scope === "content") {
-        clearTimeout(feedDebounce);
-        feedDebounce = setTimeout(renderFeed, 120);
-      } else {
-        renderResults();
+    searchInput.addEventListener("focus", () => {
+      if (!isWide() && state.scope !== "content" && !state.token) {
+        searchInput.blur();
+        openScopeLookup();
+        return;
       }
+      renderResults();
+    });
+    searchInput.addEventListener("input", () => {
+      $("#search-clear").hidden = !searchInput.value && !state.token;
+      if (state.scope === "content") return;
+      state.query = searchInput.value;
+      clearTimeout(lookupTimer);
+      lookupTimer = setTimeout(renderResults, 250);
     });
     searchInput.addEventListener("keydown", (e) => {
       const open = !$("#search-results").hidden;
@@ -819,8 +953,12 @@
       else if (e.key === "ArrowUp" && open) { e.preventDefault(); activeIdx = Math.max(0, activeIdx - 1); paintActive(); }
       else if (e.key === "Enter") {
         e.preventDefault();
-        if (open && activeIdx >= 0) pickResult(activeIdx);
-        else searchInput.blur();
+        if (state.scope === "content") {
+          state.query = searchInput.value.trim();
+          $("#search-results").hidden = true;
+          renderFeed();
+          searchInput.blur();
+        } else if (open && activeIdx >= 0) pickResult(activeIdx);
       } else if (e.key === "Escape") {
         $("#search-results").hidden = true;
         searchInput.blur();
@@ -861,8 +999,10 @@
 
   function openViewsSheet(anchor) {
     openSheet({
-      title: "Views", anchor, width: 300,
-      body: `<div class="sheet__search">${svg("search", 16)}<input type="text" placeholder="Search views" data-view-search></div><div data-views></div>`,
+      title: "Views",
+      full: VIEWS.length > 10,
+      footer: isWide() ? `<button type="button" class="btn btn--ghost" data-new-view>Create new view</button>` : "",
+      body: `<div class="sheet__search">${svg("search", 16)}<input type="search" enterkeyhint="search" placeholder="Search views" data-view-search></div><div data-views></div>`,
       onMount(panel) {
         const paint = (q = "") => {
           let html = "";
@@ -879,6 +1019,7 @@
         };
         paint();
         $("[data-view-search]", panel).addEventListener("input", (e) => paint(e.target.value));
+        $("[data-new-view]", panel)?.addEventListener("click", () => toast("Creating a view isn’t part of this prototype"));
         panel.addEventListener("click", (e) => {
           const b = e.target.closest("[data-view]");
           if (!b) return;
@@ -917,7 +1058,9 @@
             <button type="button" class="opt" data-t="${t}">${checkbox(draft.has(t))}${typeIcon(t, "sm")}<span class="opt__title">${TYPES[t].label}</span><span class="opt__meta">${countBy(t)}</span></button>`).join("");
         };
         paint();
-        $("[data-type-search]", panel).addEventListener("input", (e) => { q = e.target.value.toLowerCase(); paint(); });
+        const typeSearch = $("[data-type-search]", panel);
+        typeSearch.addEventListener("input", (e) => { q = e.target.value.toLowerCase(); paint(); });
+        typeSearch.addEventListener("focus", () => panel.closest(".sheet")?.classList.add("sheet--full"));
         panel.addEventListener("click", (e) => {
           const t = e.target.closest("[data-t]");
           if (t) { draft.has(t.dataset.t) ? draft.delete(t.dataset.t) : draft.add(t.dataset.t); paint(); return; }
@@ -1122,10 +1265,21 @@
       if (act === "link") {
         keepSelection();
         const sel = window.getSelection();
-        linkRow.hidden = false;
-        linkInput.value = "";
-        linkInput.placeholder = sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode) ? "Link the selected text" : "Paste or type a link";
-        linkInput.focus();
+        const hint = sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode) ? "Link the selected text" : "Paste or type a link";
+        openSheet({
+          title: "Add link",
+          body: `<label class="field__label" for="link-url">Link</label><input id="link-url" class="input" type="url" inputmode="url" enterkeyhint="done" placeholder="${esc(hint)}" data-link-url>`,
+          footer: `<span class="spacer"></span><button type="button" class="btn btn--ghost" data-sheet-close>Cancel</button><button type="button" class="btn btn--primary" data-link-add>Add</button>`,
+          onMount(panel) {
+            const input = $("[data-link-url]", panel);
+            input.focus();
+            $("[data-link-add]", panel).addEventListener("click", () => {
+              linkInput.value = input.value;
+              dismissSheet();
+              applyLink();
+            });
+          },
+        });
         return;
       }
       const cmd = t.closest("[data-rte-cmd]")?.dataset.rteCmd;
@@ -1251,7 +1405,7 @@
         });
 
         ta.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" && !ev.shiftKey && isDesktop() && pop.hidden && !rte.inList()) {
+          if (ev.key === "Enter" && !ev.shiftKey && isWide() && pop.hidden && !rte.inList()) {
             ev.preventDefault();
             form.requestSubmit();
           }
@@ -1558,7 +1712,7 @@
     const toolbar = rteBarHtml({ extra: `<button type="button" class="rte__btn" data-attach aria-label="Attach file" title="Attach file">${svg("paperclip", 20)}</button>` });
     return `
       <div class="panel__header">
-        <button type="button" class="icon-btn" data-composer-close aria-label="${isDesktop() ? "Close" : "Back"}">${svg(isDesktop() ? "x" : "chevronLeft", 20)}</button>
+        <button type="button" class="icon-btn" data-composer-close aria-label="${isWide() ? "Close" : "Back"}">${svg(isWide() ? "x" : "chevronLeft", 20)}</button>
         <div class="panel__heading"><span>${comp.draftId ? "Edit draft" : "New activity"}</span></div>
         <span class="save-state" data-save-state>${comp.draftId ? "Draft" : ""}</span>
       </div>
@@ -1701,7 +1855,7 @@
     }
     if (!comp[name].includes(id)) comp[name].push(id);
     rerenderField(name);
-    if (def.multi) $(`[data-token-input="${name}"]`, compRoot)?.focus();
+    if (def.multi && isWide()) $(`[data-token-input="${name}"]`, compRoot)?.focus();
   }
 
   function removeToken(name, id) {
@@ -1713,7 +1867,7 @@
       comp[name] = comp[name].filter((x) => x !== id);
       rerenderField(name);
     }
-    $(`[data-token-input="${name}"]`, compRoot)?.focus();
+    if (isWide()) $(`[data-token-input="${name}"]`, compRoot)?.focus();
   }
 
   function mountComposer(sheet) {
@@ -1755,7 +1909,7 @@
       if (t.dataset.bind) {
         comp[t.dataset.bind] = t.value;
         t.closest(".field")?.classList.remove("has-error");
-      } else if (t.dataset.tokenInput) {
+      } else if (t.dataset.tokenInput && isWide()) {
         renderTokenPop(t.dataset.tokenInput, t.value);
       } else if (t.matches("[data-task-title], [data-task-due]")) {
         const task = comp.tasks.find((x) => x.id === t.closest("[data-task]").dataset.task);
@@ -1765,7 +1919,10 @@
 
     sheet.addEventListener("focusin", (e) => {
       const t = e.target;
-      if (t.dataset?.tokenInput) renderTokenPop(t.dataset.tokenInput, t.value);
+      if (t.dataset?.tokenInput) {
+        if (!isWide()) { openFieldPicker(t.dataset.tokenInput); t.blur(); return; }
+        renderTokenPop(t.dataset.tokenInput, t.value);
+      }
     });
 
     sheet.addEventListener("focusout", (e) => {
@@ -1867,7 +2024,7 @@
       if (t.closest("[data-composer-log]")) { logActivity(); }
     });
 
-    if (isDesktop()) setTimeout(() => (comp.entityId ? $("#f-type", sheet) : $("#tf-entity", sheet))?.focus(), 260);
+    if (isWide()) setTimeout(() => (comp.entityId ? $("#f-type", sheet) : $("#tf-entity", sheet))?.focus(), 260);
   }
 
   function saveDraft() {
@@ -2102,6 +2259,7 @@
     });
 
     $("#feed").addEventListener("click", (e) => {
+      if (e.target.closest("[data-load-more]")) { state.shown += 6; renderFeed(); return; }
       if (e.target.closest("[data-reset-all]")) { resetFilters(); return; }
       const link = e.target.closest("[data-entity-link]");
       if (link) { e.stopPropagation(); filterByEntity(link.dataset.entityLink); return; }
@@ -2118,17 +2276,23 @@
       }
     });
 
+    $("#advanced-btn").addEventListener("click", openAdvanced);
     $("#drafts-btn").addEventListener("click", () => { location.hash = "#/drafts"; });
     $("#add-btn").addEventListener("click", () => openComposer());
     $("#fab").addEventListener("click", () => openComposer());
-    $("#refresh-btn").addEventListener("click", () => { renderFeed(); toast("Timeline refreshed"); });
+    $("#refresh-btn").addEventListener("click", () => {
+      if (!navigator.onLine) { toast("Can’t refresh while offline"); return; }
+      renderFeed();
+      toast("Timeline refreshed");
+    });
     $("#me-avatar").innerHTML = avatar(ME, 32);
     $("#menu-btn").addEventListener("click", () => toast("Main menu isn’t part of this prototype"));
     $("#global-search-btn").addEventListener("click", () => toast("Global search isn’t part of this prototype — use the Timeline search below"));
 
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
-      if (sheetOpen) dismissSheet();
+      if (pickerOpen) dismissPicker();
+      else if (sheetOpen) dismissSheet();
       else if (panelRequestClose) panelRequestClose();
     });
     window.addEventListener("popstate", () => {
@@ -2136,20 +2300,94 @@
       const kind = overlay.pop();
       if (!kind) return;
       ignorePop = true;
-      if (kind === "sheet") closeSheet();
+      if (kind === "picker") closePicker();
+      else if (kind === "sheet") closeSheet();
       else if (kind === "panel") (panelRequestClose || closePanel)();
       ignorePop = false;
       if (overlay.length) history.pushState({ gsOverlay: overlay.length }, "");
     });
-    window.addEventListener("resize", () => { if (sheetOpen && isDesktop()) dismissSheet(); syncAppbarHeight(); });
+    window.addEventListener("resize", () => {
+      document.body.classList.toggle("is-split", !!$(".panel--detail") && isSplit());
+      syncChipFade();
+      syncAppbarHeight();
+    });
     window.addEventListener("hashchange", route);
     if ("ResizeObserver" in window) {
       new ResizeObserver(syncAppbarHeight).observe($("#timeline-appbar"));
       new ResizeObserver(syncAppbarHeight).observe($("#drafts-appbar"));
     }
 
+    bindQuickReturn();
+    syncChipFade();
+    $("#chips").addEventListener("scroll", syncChipFade, { passive: true });
+    window.addEventListener("online", syncNet);
+    window.addEventListener("offline", syncNet);
+    syncNet();
+
     renderAll();
     route();
+    syncChipFade();
+  }
+
+  function openAdvanced() {
+    const paint = (panel) => {
+      $("[data-adv-list]", panel).innerHTML = [
+        ["comments", "Has comments"],
+        ["tasks", "Has tasks"],
+        ["mine", "Logged by me"],
+      ].map(([k, label]) => `<button type="button" class="opt" data-adv="${k}">${checkbox(state.advanced[k])}<span class="opt__title">${label}</span></button>`).join("");
+    };
+    openSheet({
+      title: "Advanced filters",
+      dialog: true,
+      body: `<div data-adv-list></div>`,
+      footer: `<button type="button" class="btn btn--ghost" data-adv-reset>Reset</button><span class="spacer"></span><button type="button" class="btn btn--primary" data-sheet-close>Done</button>`,
+      onMount(panel) {
+        paint(panel);
+        panel.addEventListener("click", (e) => {
+          if (e.target.closest("[data-adv-reset]")) {
+            state.advanced = { comments: false, tasks: false, mine: false };
+            paint(panel);
+            renderHeader();
+            renderFeed();
+            return;
+          }
+          const b = e.target.closest("[data-adv]");
+          if (!b) return;
+          state.advanced[b.dataset.adv] = !state.advanced[b.dataset.adv];
+          paint(panel);
+          renderHeader();
+          renderFeed();
+        });
+      },
+    });
+  }
+
+  function syncChipFade() {
+    const el = $("#chips");
+    if (!el) return;
+    const more = el.scrollWidth > el.clientWidth + 2 && el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+    el.classList.toggle("is-overflow", more);
+  }
+
+  function bindQuickReturn() {
+    const feed = $("#feed");
+    let last = 0;
+    feed.addEventListener("scroll", () => {
+      if (isWide()) { $("#timeline-appbar").classList.remove("is-compact"); return; }
+      const y = feed.scrollTop;
+      if (y < 12) $("#timeline-appbar").classList.remove("is-compact");
+      else if (y > last + 8) $("#timeline-appbar").classList.add("is-compact");
+      else if (y < last - 8) $("#timeline-appbar").classList.remove("is-compact");
+      last = y;
+    }, { passive: true });
+  }
+
+  function syncNet() {
+    const bar = $("#netbar");
+    const offline = !navigator.onLine;
+    bar.hidden = !offline;
+    if (offline) toast("You’re offline. Changes stay on this device until you reconnect.");
   }
 
   init();

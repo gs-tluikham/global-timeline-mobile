@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="netbar" id="netbar" hidden>You’re offline. Timeline will refresh when you reconnect.</div>
   <div class="app">
     <section class="route" id="route-timeline">
       <header class="appbar" id="timeline-appbar">
@@ -47,12 +48,13 @@
             <div class="search__field">
               <span class="search__icon" data-icon="search"></span>
               <div id="search-token-slot" class="search__token-slot"></div>
-              <input id="search-input" type="text" autocomplete="off" enterkeyhint="search"
+              <input id="search-input" type="search" autocomplete="off" enterkeyhint="search"
                      aria-autocomplete="list" aria-controls="search-results" placeholder="Search subjects and notes" />
               <button type="button" class="search__clear" id="search-clear" aria-label="Clear search" hidden data-icon="x"></button>
             </div>
             <div class="search__results" id="search-results" role="listbox" hidden></div>
           </div>
+          <button type="button" class="chip chip--advanced hide-sm" id="advanced-btn">Advanced Filters<span class="chip__count" id="advanced-count" hidden>0</span></button>
           <div class="chips" id="chips"></div>
         </div>
       </header>
@@ -99,6 +101,7 @@
     </section>
   </div>
 
+  <div id="picker-root"></div>
   <div id="panel-root"></div>
   <div id="sheet-root"></div>
   <div class="toast" id="toast" role="status" hidden></div>
