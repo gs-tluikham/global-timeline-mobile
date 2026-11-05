@@ -485,7 +485,7 @@
     if (state.token?.kind === "person") {
       const id = state.token.id;
       const inNotes = (a.notes || "").includes(`data-person="${id}"`);
-      const inComments = a.comments.some((c) => c.authorId === id || c.text.includes(`@${personById[id].name}`));
+      const inComments = a.comments.some((c) => c.authorId === id || (c.text ?? stripHtml(c.html)).includes(`@${personById[id].name}`));
       if (!involvedIds(a).includes(id) && !inNotes && !inComments) return false;
     }
     return true;
@@ -930,6 +930,179 @@
     };
   }
 
+  /* ───────── Rich text toolbar (shared by comments + notes) ───────── */
+  const RTE_FORMATS = [
+    ["bold", "bold", "Bold"],
+    ["italic", "italic", "Italic"],
+    ["underline", "underline", "Underline"],
+    ["insertUnorderedList", "list", "Bulleted list"],
+    ["insertOrderedList", "listOrdered", "Numbered list"],
+    ["removeFormat", "clearFormat", "Clear formatting"],
+  ];
+
+  function rteBarHtml({ extra = "", end = "" } = {}) {
+    const btn = (attrs, inner, label) => `<button type="button" class="rte__btn" ${attrs} aria-label="${label}" title="${label}">${inner}</button>`;
+    return `
+      <div class="rte__bar" data-rte-bar>
+        <div class="rte__tools" data-rte-base>
+          ${btn('data-rte="format" aria-expanded="false"', '<span class="rte__aa">Aa</span>', "Formatting")}
+          ${btn('data-rte="mention"', svg("at", 20), "Mention someone")}
+          ${btn('data-rte="link"', svg("link", 20), "Add link")}
+          ${extra}
+        </div>
+        <div class="rte__tools" data-rte-formats hidden>
+          ${btn('data-rte="close"', svg("x", 20), "Hide formatting")}
+          <span class="rte__sep" aria-hidden="true"></span>
+          ${RTE_FORMATS.map(([cmd, icon, label]) => btn(`data-rte-cmd="${cmd}" aria-pressed="false"`, svg(icon, 20), label)).join("")}
+        </div>
+        <span class="spacer"></span>
+        ${end}
+      </div>
+      <div class="rte__link" data-rte-link hidden>
+        <input class="input" type="url" inputmode="url" placeholder="Paste or type a link" aria-label="Link URL" data-rte-link-input>
+        <button type="button" class="btn btn--primary btn--sm" data-rte-link-apply>Add</button>
+        <button type="button" class="icon-btn icon-btn--sm" data-rte-link-cancel aria-label="Cancel">${svg("x", 16)}</button>
+      </div>`;
+  }
+
+  const rteHasContent = (el) => !!(stripHtml(el.innerHTML) || el.querySelector(".mention, li, a"));
+
+  function rteMention(editor, pop, onChange) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) { pop.hidden = true; return; }
+    const node = sel.anchorNode;
+    if (!node || node.nodeType !== 3 || !editor.contains(node)) { pop.hidden = true; return; }
+    const offset = sel.anchorOffset;
+    const m = node.nodeValue.slice(0, offset).match(/(^|\s)@(\w*)$/);
+    if (!m) { pop.hidden = true; return; }
+    renderMentionPop(pop, m[2], (p) => {
+      const range = document.createRange();
+      range.setStart(node, offset - m[2].length - 1);
+      range.setEnd(node, offset);
+      range.deleteContents();
+      const tmp = document.createElement("span");
+      tmp.innerHTML = mention(p.id);
+      const span = tmp.firstChild;
+      range.insertNode(span);
+      const space = document.createTextNode("\u00a0");
+      span.after(space);
+      const caret = document.createRange();
+      caret.setStartAfter(space);
+      caret.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(caret);
+      pop.hidden = true;
+      editor.focus();
+      onChange();
+    });
+  }
+
+  function bindRte(root, editor, { mentionPop, onChange = () => {} }) {
+    const base = $("[data-rte-base]", root);
+    const formats = $("[data-rte-formats]", root);
+    const linkRow = $("[data-rte-link]", root);
+    const linkInput = $("[data-rte-link-input]", root);
+    let savedRange = null;
+
+    const changed = () => {
+      $$("a", editor).forEach((a) => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
+      onChange();
+    };
+    const syncState = () => {
+      if (!root.isConnected) { document.removeEventListener("selectionchange", syncState); return; }
+      if (formats.hidden) return;
+      $$("[data-rte-cmd]", formats).forEach((b) => {
+        const cmd = b.dataset.rteCmd;
+        const on = cmd !== "removeFormat" && editor.contains(window.getSelection().anchorNode) && document.queryCommandState(cmd);
+        b.classList.toggle("is-on", on);
+        b.setAttribute("aria-pressed", String(on));
+      });
+    };
+    const showFormats = (open) => {
+      base.hidden = open;
+      formats.hidden = !open;
+      $('[data-rte="format"]', root).setAttribute("aria-expanded", String(open));
+      syncState();
+    };
+    const keepSelection = () => {
+      const sel = window.getSelection();
+      if (sel.rangeCount && editor.contains(sel.anchorNode)) savedRange = sel.getRangeAt(0).cloneRange();
+    };
+    const restoreSelection = () => {
+      editor.focus();
+      if (!savedRange) return;
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRange);
+    };
+    const closeLink = () => { linkRow.hidden = true; linkInput.value = ""; };
+    const applyLink = () => {
+      let url = linkInput.value.trim();
+      if (!url) { closeLink(); editor.focus(); return; }
+      if (!/^[a-z]+:\/\//i.test(url) && !url.startsWith("mailto:")) url = `https://${url}`;
+      restoreSelection();
+      const sel = window.getSelection();
+      if (sel.rangeCount && !sel.isCollapsed) document.execCommand("createLink", false, url);
+      else document.execCommand("insertHTML", false, `<a href="${esc(url)}">${esc(url)}</a>&nbsp;`);
+      closeLink();
+      changed();
+    };
+
+    root.addEventListener("mousedown", (e) => {
+      if (e.target.closest("[data-rte], [data-rte-cmd]")) e.preventDefault();
+    });
+    root.addEventListener("click", (e) => {
+      const t = e.target;
+      const act = t.closest("[data-rte]")?.dataset.rte;
+      if (act === "format") { showFormats(true); editor.focus(); return; }
+      if (act === "close") { showFormats(false); editor.focus(); return; }
+      if (act === "mention") {
+        editor.focus();
+        document.execCommand("insertText", false, "@");
+        rteMention(editor, mentionPop, changed);
+        return;
+      }
+      if (act === "link") {
+        keepSelection();
+        const sel = window.getSelection();
+        linkRow.hidden = false;
+        linkInput.value = "";
+        linkInput.placeholder = sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode) ? "Link the selected text" : "Paste or type a link";
+        linkInput.focus();
+        return;
+      }
+      const cmd = t.closest("[data-rte-cmd]")?.dataset.rteCmd;
+      if (cmd) {
+        editor.focus();
+        document.execCommand(cmd, false, null);
+        if (cmd === "removeFormat") document.execCommand("unlink", false, null);
+        syncState();
+        changed();
+        return;
+      }
+      if (t.closest("[data-rte-link-apply]")) { applyLink(); return; }
+      if (t.closest("[data-rte-link-cancel]")) { closeLink(); editor.focus(); }
+    });
+    linkInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); applyLink(); }
+      if (e.key === "Escape") { e.stopPropagation(); closeLink(); editor.focus(); }
+    });
+
+    editor.addEventListener("input", () => {
+      if (!rteHasContent(editor)) editor.innerHTML = "";
+      rteMention(editor, mentionPop, changed);
+      changed();
+    });
+    editor.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !mentionPop.hidden) { e.stopPropagation(); mentionPop.hidden = true; }
+      if ((e.metaKey || e.ctrlKey) && ["b", "i", "u"].includes(e.key.toLowerCase())) setTimeout(() => { syncState(); changed(); }, 0);
+    });
+    editor.addEventListener("blur", () => setTimeout(() => { mentionPop.hidden = true; }, 150));
+    document.addEventListener("selectionchange", syncState);
+
+    return { inList: () => document.queryCommandState("insertUnorderedList") || document.queryCommandState("insertOrderedList"), showFormats };
+  }
+
   /* ───────── Activity detail ───────── */
   function fact(label, value, wide = false) {
     return `<div class="${wide ? "wide" : ""}"><dt>${esc(label)}</dt><dd>${value}</dd></div>`;
@@ -956,7 +1129,7 @@
         ${avatar(c.authorId, 32)}
         <div class="comment__body">
           <div class="comment__head"><span class="comment__name">${esc(personById[c.authorId].name)}</span><span class="comment__time">${esc(relTime(c.date))}</span></div>
-          <div class="comment__text">${renderMentionsInText(c.text)}</div>
+          <div class="comment__text richtext">${c.html ?? renderMentionsInText(c.text)}</div>
         </div>
       </div>`).join("");
   }
@@ -998,56 +1171,34 @@
         </div>
       </div>
       <form class="comment-composer" data-comment-form autocomplete="off">
-        ${avatar(ME, 32)}
-        <div class="comment-input">
+        <div class="rte rte--comment">
           <div class="mention-pop" data-mention-pop hidden></div>
-          <textarea rows="1" data-comment-input placeholder="Add a comment — type @ to mention" aria-label="Add a comment"></textarea>
+          <div class="rte__area" data-comment-input contenteditable="true" role="textbox" aria-multiline="true" aria-label="Add a comment" data-placeholder="Add a comment and @mention users"></div>
+          ${rteBarHtml({ end: `<button type="submit" class="rte__send" data-comment-send aria-label="Post comment" disabled>${svg("send", 20)}</button>` })}
         </div>
-        <button type="submit" class="icon-btn icon-btn--primary" data-comment-send aria-label="Post comment" disabled>${svg("send", 16)}</button>
       </form>`, {
       variant: "detail",
       onMount(sheet) {
         highlightDom($("[data-notes]", sheet), contentQuery());
+        const form = $("[data-comment-form]", sheet);
         const ta = $("[data-comment-input]", sheet);
         const pop = $("[data-mention-pop]", sheet);
         const send = $("[data-comment-send]", sheet);
-        const autosize = () => { ta.style.height = "auto"; ta.style.height = `${Math.min(120, ta.scrollHeight)}px`; };
+        const rte = bindRte(form, ta, { mentionPop: pop, onChange: () => { send.disabled = !rteHasContent(ta); } });
 
-        ta.addEventListener("input", () => {
-          autosize();
-          send.disabled = !ta.value.trim();
-          const upto = ta.value.slice(0, ta.selectionStart);
-          const m = upto.match(/(^|\s)@(\w*)$/);
-          if (!m) { pop.hidden = true; return; }
-          renderMentionPop(pop, m[2], (p) => {
-            const before = upto.slice(0, upto.length - m[2].length - 1);
-            const after = ta.value.slice(ta.selectionStart);
-            const insert = `@${p.name} `;
-            ta.value = before + insert + after;
-            const pos = (before + insert).length;
-            ta.setSelectionRange(pos, pos);
-            pop.hidden = true;
-            ta.focus();
-            autosize();
-            send.disabled = false;
-          });
-        });
         ta.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" && !ev.shiftKey && isDesktop()) {
+          if (ev.key === "Enter" && !ev.shiftKey && isDesktop() && pop.hidden && !rte.inList()) {
             ev.preventDefault();
-            $("[data-comment-form]", sheet).requestSubmit();
+            form.requestSubmit();
           }
-          if (ev.key === "Escape" && !pop.hidden) { ev.stopPropagation(); pop.hidden = true; }
         });
-        ta.addEventListener("blur", () => setTimeout(() => { pop.hidden = true; }, 120));
 
-        $("[data-comment-form]", sheet).addEventListener("submit", (ev) => {
+        form.addEventListener("submit", (ev) => {
           ev.preventDefault();
-          const text = ta.value.trim();
-          if (!text) return;
-          a.comments.push({ id: uid("c"), authorId: ME, text, date: Date.now() });
-          ta.value = "";
-          autosize();
+          if (!rteHasContent(ta)) return;
+          a.comments.push({ id: uid("c"), authorId: ME, html: ta.innerHTML, date: Date.now() });
+          ta.innerHTML = "";
+          rte.showFormats(false);
           send.disabled = true;
           $("[data-comment-list]", sheet).innerHTML = commentsHtml(a);
           $("[data-comment-count]", sheet).textContent = a.comments.length;
@@ -1338,9 +1489,7 @@
   function composerHtml() {
     const cfg = typeCfg(comp.type);
     const tpl = templateState();
-    const toolbar = [["bold", "bold"], ["italic", "italic"], ["underline", "underline"], ["insertUnorderedList", "list"], ["mention", "at"]]
-      .map(([cmd, icon]) => `<button type="button" data-cmd="${cmd}" aria-label="${cmd}">${svg(icon, 16)}</button>`).join("")
-      + `<button type="button" data-attach aria-label="Attach file">${svg("paperclip", 16)}</button>`;
+    const toolbar = rteBarHtml({ extra: `<button type="button" class="rte__btn" data-attach aria-label="Attach file" title="Attach file">${svg("paperclip", 20)}</button>` });
     return `
       <div class="panel__header">
         <button type="button" class="icon-btn" data-composer-close aria-label="Close">${svg("x", 20)}</button>
@@ -1356,10 +1505,10 @@
                   <label class="field__label" data-notes-label>${esc(cfg.notes)}<span class="req">*</span></label>
                   <button type="button" class="link-btn" data-apply-template ${tpl.disabled ? "disabled" : ""} title="${esc(tpl.title)}">Apply template</button>
                 </div>
-                <div class="editor">
-                  <div class="editor__area" data-editor contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="${esc(cfg.placeholder)}">${comp.notes}</div>
+                <div class="rte rte--notes" data-notes-editor>
+                  <div class="rte__area editor__area" data-editor contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="${esc(cfg.placeholder)}">${comp.notes}</div>
                   <div class="mention-pop" data-editor-mention hidden></div>
-                  <div class="editor__toolbar">${toolbar}</div>
+                  ${toolbar}
                 </div>
                 <div class="field__error">Add some notes</div>
               </div>
@@ -1501,43 +1650,19 @@
     $(`[data-token-input="${name}"]`, compRoot)?.focus();
   }
 
-  function checkEditorMention(editor, pop) {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) { pop.hidden = true; return; }
-    const node = sel.anchorNode;
-    if (!node || node.nodeType !== 3 || !editor.contains(node)) { pop.hidden = true; return; }
-    const offset = sel.anchorOffset;
-    const upto = node.nodeValue.slice(0, offset);
-    const m = upto.match(/(^|\s)@(\w*)$/);
-    if (!m) { pop.hidden = true; return; }
-    renderMentionPop(pop, m[2], (p) => {
-      const range = document.createRange();
-      range.setStart(node, offset - m[2].length - 1);
-      range.setEnd(node, offset);
-      range.deleteContents();
-      const tmp = document.createElement("span");
-      tmp.innerHTML = mention(p.id);
-      const span = tmp.firstChild;
-      range.insertNode(span);
-      const space = document.createTextNode("\u00a0");
-      span.after(space);
-      const caret = document.createRange();
-      caret.setStartAfter(space);
-      caret.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(caret);
-      pop.hidden = true;
-      comp.notes = editor.innerHTML;
-      syncTemplateBtn();
-      editor.focus();
-    });
-  }
-
   function mountComposer(sheet) {
     compRoot = sheet;
     const editor = $("[data-editor]", sheet);
     const editorPop = $("[data-editor-mention]", sheet);
     const fileInput = $("[data-file-input]", sheet);
+    bindRte($("[data-notes-editor]", sheet), editor, {
+      mentionPop: editorPop,
+      onChange: () => {
+        comp.notes = editor.innerHTML;
+        editor.closest(".field").classList.remove("has-error");
+        syncTemplateBtn();
+      },
+    });
 
     fileInput.addEventListener("change", () => {
       const files = Array.from(fileInput.files || []);
@@ -1566,12 +1691,6 @@
         t.closest(".field")?.classList.remove("has-error");
       } else if (t.dataset.tokenInput) {
         renderTokenPop(t.dataset.tokenInput, t.value);
-      } else if (t === editor) {
-        if (!stripHtml(editor.innerHTML) && !editor.querySelector(".mention, li")) editor.innerHTML = "";
-        comp.notes = editor.innerHTML;
-        editor.closest(".field").classList.remove("has-error");
-        syncTemplateBtn();
-        checkEditorMention(editor, editorPop);
       } else if (t.matches("[data-task-title], [data-task-due]")) {
         const task = comp.tasks.find((x) => x.id === t.closest("[data-task]").dataset.task);
         if (t.matches("[data-task-title]")) task.title = t.value; else task.due = t.value;
@@ -1593,7 +1712,6 @@
           if (pop) pop.hidden = true;
         }, 120);
       }
-      if (t === editor) setTimeout(() => { editorPop.hidden = true; }, 150);
     });
 
     sheet.addEventListener("keydown", (e) => {
@@ -1623,8 +1741,7 @@
 
     sheet.addEventListener("mousedown", (e) => {
       const opt = e.target.closest("[data-token-option]");
-      if (opt) { e.preventDefault(); addToken(opt.dataset.tokenOption, opt.dataset.id); return; }
-      if (e.target.closest("[data-cmd]")) e.preventDefault();
+      if (opt) { e.preventDefault(); addToken(opt.dataset.tokenOption, opt.dataset.id); }
     });
 
     sheet.addEventListener("click", (e) => {
@@ -1645,20 +1762,6 @@
       if (att && t.closest("[data-attachment-remove]")) {
         comp.attachments = comp.attachments.filter((f) => f.id !== att.dataset.attachment);
         $("[data-attachments]", sheet).innerHTML = attachmentsHtml();
-        return;
-      }
-
-      const cmd = t.closest("[data-cmd]");
-      if (cmd) {
-        editor.focus();
-        if (cmd.dataset.cmd === "mention") {
-          document.execCommand("insertText", false, "@");
-          checkEditorMention(editor, editorPop);
-        } else {
-          document.execCommand(cmd.dataset.cmd, false, null);
-        }
-        comp.notes = editor.innerHTML;
-        syncTemplateBtn();
         return;
       }
 

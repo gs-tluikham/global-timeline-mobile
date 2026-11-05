@@ -915,38 +915,17 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .comment__head { display: flex; align-items: baseline; gap: 8px; }
 .comment__name { font-weight: 600; font-size: 16px; }
 .comment__time { font-size: 14px; color: var(--text-3); }
-.comment__text { margin-top: 2px; white-space: pre-wrap; word-wrap: break-word; }
+.comment__text { margin-top: 2px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+.comment__text p { margin: 0 0 6px; }
+.comment__text ul, .comment__text ol { margin: 0 0 6px; padding-left: 20px; }
+.richtext a { color: var(--primary); text-decoration: underline; }
 .comments__empty { padding: 16px 0; color: var(--text-3); }
 
 .comment-composer {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 10px 12px calc(10px + var(--safe-b));
+  padding: 8px 12px calc(10px + var(--safe-b));
   border-top: 1px solid var(--border);
   background: var(--surface);
   flex: none;
-}
-.comment-composer > .avatar { margin-bottom: 6px; }
-.comment-input {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  border: 1px solid var(--border-2);
-  border-radius: 20px;
-  padding: 8px 14px;
-  background: var(--surface);
-}
-.comment-input:focus-within { border-color: var(--primary); box-shadow: var(--ring); }
-.comment-input textarea {
-  flex: 1;
-  border: 0;
-  outline: 0;
-  resize: none;
-  max-height: 120px;
-  line-height: 1.45;
-  background: transparent;
 }
 
 .mention-pop {
@@ -962,7 +941,6 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   box-shadow: var(--pop-shadow);
   padding: 6px 0;
 }
-.comment-input .mention-pop { bottom: calc(100% + 8px); }
 
 /* Composer */
 .composer__grid { display: flex; flex-direction: column; }
@@ -1007,7 +985,6 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .field.has-error .field__error { display: block; }
 .field.has-error .input,
 .field.has-error .token-input,
-.field.has-error .editor { border-color: var(--danger); }
 
 .input {
   width: 100%;
@@ -1078,36 +1055,72 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   padding: 6px 0;
 }
 
-.editor {
+.rte {
   position: relative;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-2);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
-.editor:focus-within { border-color: var(--primary); box-shadow: var(--ring); }
-.editor__area {
-  min-height: 160px;
-  padding: 12px 14px;
+.rte:hover { border-color: var(--primary); }
+.rte:focus-within { border-color: var(--primary); box-shadow: var(--ring); }
+.rte--comment { border-radius: var(--radius); }
+.field.has-error .rte { border-color: var(--danger); }
+
+.rte__area {
+  min-height: 48px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 12px 14px 4px;
   outline: 0;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.5;
   word-wrap: break-word;
 }
-.editor__area:empty::before { content: attr(data-placeholder); color: var(--text-3); pointer-events: none; }
-.editor__area p { margin: 0 0 8px; }
-.editor__area ul, .editor__area ol { margin: 0 0 8px; padding-left: 22px; }
-.editor__toolbar {
-  display: flex;
-  gap: 2px;
-  padding: 4px 6px;
-  border-top: 1px solid var(--border);
-  overflow-x: auto;
+.rte--notes .rte__area { min-height: 160px; max-height: none; font-size: 16px; line-height: 1.6; padding: 12px 14px; }
+.rte__area:empty::before { content: attr(data-placeholder); color: var(--placeholder); pointer-events: none; }
+.rte__area p { margin: 0 0 8px; }
+.rte__area ul, .rte__area ol { margin: 0 0 8px; padding-left: 22px; }
+.rte__area a { color: var(--primary); text-decoration: underline; }
+
+.rte__bar { display: flex; align-items: center; gap: 4px; padding: 4px 8px 8px; min-height: 48px; }
+.rte--notes .rte__bar { border-top: 1px solid var(--border); padding: 4px 8px; }
+.rte__tools { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.rte__tools::-webkit-scrollbar { display: none; }
+.rte__btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--rich-gray-60);
+  flex: none;
 }
-.editor__toolbar button { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; color: var(--text-2); flex: none; }
-.editor__toolbar button:hover { background: var(--bg); color: var(--text); }
-.editor .mention-pop { top: 56px; left: 12px; right: auto; width: min(300px, calc(100% - 24px)); }
+.rte__btn:hover { background: var(--hover); color: var(--rich-gray-90); }
+.rte__btn:active { background: var(--press); }
+.rte__btn.is-on { background: var(--hover); color: var(--rich-gray-90); }
+.rte__aa { font-size: 16px; font-weight: 600; line-height: 1; color: var(--rich-gray-70); }
+.rte__sep { width: 1px; height: 20px; margin: 0 4px; background: var(--border-2); flex: none; }
+.rte__send {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  flex: none;
+}
+.rte__send:hover { background: var(--primary-hover); }
+.rte__send:disabled { background: var(--rich-gray-30); color: var(--rich-gray-60); cursor: not-allowed; }
+
+.rte__link { display: flex; align-items: center; gap: 8px; padding: 0 8px 8px; }
+.rte__link .input { flex: 1; min-width: 0; }
+
+.rte .mention-pop { left: 8px; right: 8px; bottom: calc(100% + 8px); }
+.rte--notes .mention-pop { top: 56px; bottom: auto; right: auto; width: min(300px, calc(100% - 24px)); }
 
 .task { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .task__row { display: flex; align-items: center; gap: 8px; }
@@ -1149,7 +1162,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 /* ───────── Responsive ───────── */
 @media (max-width: 767px) {
   .hide-sm { display: none !important; }
-  input, textarea, select, .editor__area { font-size: 16px; }
+  input, textarea, select, .rte__area { font-size: 16px; }
   #timeline-appbar .chips { order: -1; }
 }
 
@@ -1196,5 +1209,5 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   .block--details, .block--tasks, .block--attachments { border-top: 0; }
   .block--details { padding-top: 0; }
   .block--tasks, .block--attachments { padding-top: 4px; }
-  .editor__area { min-height: 260px; }
+  .rte--notes .rte__area { min-height: 260px; }
 }

@@ -40,6 +40,21 @@ const MAP = {
   paperclip: "attachment",
   filter: "filter",
   menu: "hamburger-left",
+  clearFormat: "clear-text-formating",
+};
+
+// Not in the Horizon export: drawn to match Horizon's 24px `bullet` (1.4 stroke, rich-gray/60).
+const EXTRA = {
+  listOrdered: {
+    "24": {
+      vb: "0 0 24 24",
+      inner:
+        '<path d="M4.4 5.2 5.4 4.7V9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M4.3 13.2c.2-.5.6-.8 1.1-.8.6 0 1.1.4 1.1 1 0 .9-1.2 1.6-2.2 2.6h2.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M9 7H19" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' +
+        '<path d="M9 15H19" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+    },
+  },
 };
 
 function load(file) {
@@ -65,6 +80,8 @@ for (const [key, name] of Object.entries(MAP)) {
   if (!entry["16"] && !entry["24"]) missing.push(`${key} → ${name}`);
   else icons[key] = entry;
 }
+
+Object.assign(icons, EXTRA);
 
 fs.writeFileSync(
   OUT,

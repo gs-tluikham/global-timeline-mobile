@@ -19,6 +19,7 @@ Open http://localhost:5179 (use a phone or DevTools device mode; it also adapts 
 - Scoped search below the quick filters: Content (filters + highlights text), Entity (Company / Relationship), People (Person / User)
 - Flat activity feed with 8px gaps; tap a company or relationship name to filter by it
 - Activity detail with comments and @mentions
+- Formatting toolbar on comments and activity notes: **Aa** opens Bold / Italic / Underline / bulleted and numbered lists / clear formatting; **@** mentions a user; the link button inserts a link. Comments post with the round send button (or Enter on desktop).
 - Add Activity composer whose fields change per activity type
 - Drafts: closing a filled composer auto-saves; select + delete with undo; Email & plugin filter
 
@@ -36,6 +37,8 @@ node tools/build-icons.mjs
 ```
 
 It reads `../../horizon-design-system/horizon icons/icons/{16,24}/` and swaps the baked-in `#5F6C7A` for `currentColor`. Type sizes stay on the 14 / 16 / 24 px scale agreed for this prototype (12px only for badges and keyboard hints).
+
+Horizon has no numbered-list icon, so `listOrdered` is drawn in `tools/build-icons.mjs` to match the bullet-list icon.
 
 ## Composer fields by type
 
