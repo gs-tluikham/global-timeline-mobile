@@ -1234,6 +1234,36 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   .panel__sheet, .panel__sheet.is-leaving, .sheet__panel, .picker { animation: none; }
 }
 
+/* Microcopy — 12 / 16 */
+.item__author,
+.item__time,
+.item__comments,
+.chip,
+.field__label,
+.field__hint,
+.field__error,
+.facts dt,
+.comment__time,
+.feed__summary,
+.task-view__due,
+.task-view__assignee,
+.draft__top,
+.attachment__size,
+.save-state,
+.detail__byline,
+.detail__crumbs,
+.opt__desc,
+.opt__meta,
+.results__hint,
+.result__sub,
+.ent-badge,
+.netbar {
+  font-size: 12px;
+  line-height: 16px;
+}
+.chip strong,
+.ent-badge { font-weight: 600; }
+
 /* ───────── Responsive ───────── */
 @media (max-width: 599px) {
   .hide-sm { display: none !important; }
@@ -1288,7 +1318,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
     line-height: 24px;
     font-weight: 400;
   }
-  /* Microcopy / label / helper — 14 / 24 / 400 */
+  /* Microcopy / label / helper — 12 / 16 / 400 */
   .item__author,
   .item__time,
   .item__comments,
@@ -1309,9 +1339,10 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   .opt__desc,
   .opt__meta,
   .results__hint,
-  .result__sub {
-    font-size: 14px;
-    line-height: 24px;
+  .result__sub,
+  .ent-badge {
+    font-size: 12px;
+    line-height: 16px;
     font-weight: 400;
   }
   .chip strong { font-weight: 600; }
@@ -1373,7 +1404,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
     align-self: end;
   }
   .item__comments { grid-area: comments; margin-left: 0; align-self: start; justify-self: end; order: 0; }
-  .item__author, .item__time { order: 0; font-size: 14px; line-height: 20px; }
+  .item__author, .item__time { order: 0; font-size: 12px; line-height: 16px; }
   .item__author .avatar { display: none; }
   .item .type-icon { width: 40px; height: 40px; }
   .item__entity { font-size: 14px; font-weight: 600; line-height: 20px; }
