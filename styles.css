@@ -485,9 +485,9 @@ kbd {
   grid-template-columns: 32px minmax(0, 1fr);
   grid-template-areas:
     "icon identity"
-    ". subject"
-    ". snippet"
-    ". foot";
+    "subject subject"
+    "snippet snippet"
+    "foot foot";
   column-gap: 8px;
   row-gap: 0;
   align-items: center;
