@@ -568,6 +568,23 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .empty h2 { margin: 0; font-size: 16px; color: var(--text); }
 .empty p { margin: 0 0 8px; }
 
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(20px + var(--safe-b));
+  z-index: 15;
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(23, 101, 242, 0.35);
+}
+.fab:active { transform: scale(0.97); }
+
 /* ───────── Drafts ───────── */
 .draft {
   display: flex;

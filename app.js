@@ -1977,6 +1977,7 @@
 
     $("#drafts-btn").addEventListener("click", () => { location.hash = "#/drafts"; });
     $("#add-btn").addEventListener("click", () => openComposer());
+    $("#fab").addEventListener("click", () => openComposer());
     $("#refresh-btn").addEventListener("click", () => { renderFeed(); toast("Timeline refreshed"); });
 
     document.addEventListener("keydown", (e) => {
