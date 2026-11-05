@@ -1937,7 +1937,7 @@
   /* ───────── Init ───────── */
   function init() {
     $$("[data-icon]").forEach((el) => {
-      const size = el.closest(".fab") || el.classList.contains("fab") ? 24 : el.closest(".view-switch") ? 18 : 18;
+      const size = 18;
       el.insertAdjacentHTML("afterbegin", svg(el.dataset.icon, size));
     });
 
@@ -1977,7 +1977,6 @@
 
     $("#drafts-btn").addEventListener("click", () => { location.hash = "#/drafts"; });
     $("#add-btn").addEventListener("click", () => openComposer());
-    $("#fab").addEventListener("click", () => openComposer());
     $("#refresh-btn").addEventListener("click", () => { renderFeed(); toast("Timeline refreshed"); });
 
     document.addEventListener("keydown", (e) => {

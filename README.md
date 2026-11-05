@@ -52,7 +52,7 @@ Form rules:
 |---|---|---|
 | Pickers | Bottom sheets | Anchored popovers |
 | Detail / Composer | Full screen | Right drawer (composer is 2-column ≥ 900px) |
-| Add Activity | Floating action button | Header button |
+| Add Activity | Header button, label only | Header button, label only |
 
 ## Data
 
