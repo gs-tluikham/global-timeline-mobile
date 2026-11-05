@@ -295,6 +295,11 @@
     if (d === 1) return "Yesterday";
     return fmtDate(t);
   }
+  function cardStamp(t) {
+    const d = new Date(t);
+    const date = d.toLocaleDateString([], { month: "numeric", day: "numeric", year: "numeric" });
+    return `${date} · ${fmtTime(t)}`;
+  }
   function relTime(t) {
     const m = Math.round((Date.now() - t) / 6e4);
     if (m < 1) return "Just now";
@@ -383,11 +388,44 @@
     toast.t = setTimeout(() => { el.hidden = true; }, opts.action ? 5000 : 2400);
   }
 
+  /* ───────── Overlay history (browser / swipe back closes the top layer) ───────── */
+  let overlay = [];
+  let ignorePop = false;
+
+  function rememberOverlay(kind) {
+    overlay.push(kind);
+    const state = { gsOverlay: overlay.length };
+    if (overlay.length === 1) history.pushState(state, "");
+    else history.replaceState(state, "");
+  }
+
+  function dropOverlay(kind) {
+    const i = overlay.lastIndexOf(kind);
+    if (i >= 0) overlay.splice(i, 1);
+  }
+
+  function releaseOverlay(kind) {
+    if (ignorePop) return;
+    const i = overlay.lastIndexOf(kind);
+    if (i < 0) return;
+    overlay.splice(i, 1);
+    if (!overlay.length) {
+      if (history.state && history.state.gsOverlay) {
+        ignorePop = true;
+        history.back();
+      }
+    } else {
+      history.replaceState({ gsOverlay: overlay.length }, "");
+    }
+  }
+
   /* ───────── Sheet (bottom sheet on mobile, popover on desktop) ───────── */
   let sheetOpen = false;
 
   function openSheet({ title = "", body = "", footer = "", anchor = null, width = 320, dialog = false, onMount }) {
+    const replacing = sheetOpen;
     closeSheet();
+    if (!replacing) rememberOverlay("sheet");
     const desktop = isDesktop();
     const mode = dialog ? "sheet--dialog" : desktop && anchor ? "sheet--popover" : "";
     const showHeader = title && (!desktop || dialog || !anchor);
@@ -411,7 +449,7 @@
       panel.style.top = `${r.bottom + 6}px`;
       panel.style.maxHeight = `${Math.max(240, window.innerHeight - r.bottom - 24)}px`;
     }
-    $$("[data-sheet-close]", root).forEach((el) => el.addEventListener("click", closeSheet));
+    $$("[data-sheet-close]", root).forEach((el) => el.addEventListener("click", dismissSheet));
     sheetOpen = true;
     onMount && onMount(panel);
     const first = panel.querySelector("input:not([type=date])");
@@ -423,6 +461,12 @@
     sheetOpen = false;
   }
 
+  function dismissSheet() {
+    if (!sheetOpen) return;
+    closeSheet();
+    releaseOverlay("sheet");
+  }
+
   function checkbox(checked, ind = false) {
     return `<span class="checkbox ${checked ? "is-checked" : ""} ${ind && !checked ? "is-ind" : ""}">${checked ? svg("check", 13) : ind ? '<span class="checkbox__dash"></span>' : ""}</span>`;
   }
@@ -431,10 +475,12 @@
   let panelRequestClose = null;
 
   function openPanel(html, { variant, onMount, onRequestClose }) {
+    const replacing = !!panelRequestClose;
     const root = $("#panel-root");
     root.innerHTML = `<div class="panel panel--${variant}"><div class="panel__backdrop" data-panel-close></div><div class="panel__sheet" role="dialog" aria-modal="true">${html}</div></div>`;
     document.body.classList.add("no-scroll");
     panelRequestClose = onRequestClose || closePanel;
+    if (!replacing) rememberOverlay("panel");
     $$("[data-panel-close]", root).forEach((el) => el.addEventListener("click", () => panelRequestClose()));
     onMount && onMount($(".panel__sheet", root));
   }
@@ -443,6 +489,7 @@
     $("#panel-root").innerHTML = "";
     document.body.classList.remove("no-scroll");
     panelRequestClose = null;
+    releaseOverlay("panel");
   }
 
   /* ───────── Filtering ───────── */
@@ -533,30 +580,25 @@
     const e = entityInfo(a.entityId);
     const author = personById[a.authorId];
     const q = contentQuery();
-    const meta = typeMeta(a);
     const snippet = excerpt(stripHtml(a.notes), q);
     return `
       <article class="item ${a.id === state.lastLoggedId ? "is-new" : ""}" data-id="${a.id}" tabindex="0" aria-label="${esc(TYPES[a.type].label)}: ${esc(a.subject)}">
-        ${typeIcon(a.type)}
-        <div class="item__main">
-          <div class="item__top">
-            <div class="item__crumbs">
-              <span class="ent-badge">${e.badge}</span>
-              <button type="button" class="item__entity" data-entity-link="${e.companyId}">${esc(e.companyName)}</button>
-              ${e.relName ? `<span class="item__sep">›</span><button type="button" class="item__rel" data-entity-link="${e.id}">${esc(e.relName)}</button>` : ""}
-            </div>
-            <time class="item__time" datetime="${new Date(a.date).toISOString()}">${esc(shortStamp(a.date))}</time>
-          </div>
-          <h3 class="item__subject">${hl(a.subject)}</h3>
-          ${snippet ? `<p class="item__snippet">${hl(snippet)}</p>` : ""}
-          <div class="item__foot">
+        <span class="item__icon">${typeIcon(a.type)}</span>
+        <div class="item__identity">
+          <span class="ent-badge">${esc(e.badge)}</span>
+          <button type="button" class="item__entity" data-entity-link="${e.companyId}">${esc(e.companyName)}</button>
+          ${e.relName ? `<span class="item__sep">›</span><button type="button" class="item__rel" data-entity-link="${e.id}">${esc(e.relName)}</button>` : ""}
+        </div>
+        <h3 class="item__subject">${hl(a.subject)}</h3>
+        ${snippet ? `<p class="item__snippet">${hl(snippet)}</p>` : ""}
+        <div class="item__foot">
+          <div class="item__aside">
             <span class="item__author">${avatar(author, 20)}<span>${esc(author.name)}</span></span>
-            <span aria-hidden="true">·</span>
-            <span class="item__meta">${esc(TYPES[a.type].label)}${meta ? ` · ${esc(meta)}` : ""}</span>
-            <button type="button" class="item__comments" data-open-comments="${a.id}" aria-label="${a.comments.length} comments">
-              ${svg("message", 14)}${a.comments.length ? a.comments.length : ""}
-            </button>
+            <time class="item__time" datetime="${new Date(a.date).toISOString()}">${esc(cardStamp(a.date))}</time>
           </div>
+          <button type="button" class="item__comments" data-open-comments="${a.id}" aria-label="${a.comments.length} comments">
+            ${svg("message", 16)}${a.comments.length ? `<span>${a.comments.length}</span>` : ""}
+          </button>
         </div>
       </article>`;
   }
@@ -795,7 +837,7 @@
           const b = e.target.closest("[data-scope]");
           if (!b) return;
           setScope(b.dataset.scope);
-          closeSheet();
+          dismissSheet();
           searchInput.focus();
         });
       },
@@ -826,7 +868,7 @@
           const b = e.target.closest("[data-view]");
           if (!b) return;
           applyView(b.dataset.view);
-          closeSheet();
+          dismissSheet();
         });
       },
     });
@@ -873,7 +915,7 @@
           if (e.target.closest("[data-apply]")) {
             if (!draft.size) { toast("Pick at least one activity type"); return; }
             state.types = new Set(draft);
-            closeSheet();
+            dismissSheet();
             renderChips();
             renderFeed();
           }
@@ -905,7 +947,7 @@
           if (p) { sel = p.dataset.preset; paint(); if (sel === "custom") $("[data-start]", panel).focus(); return; }
           if (e.target.closest("[data-apply]")) {
             state.date = { preset: sel, start: $("[data-start]", panel).value, end: $("[data-end]", panel).value };
-            closeSheet();
+            dismissSheet();
             renderChips();
             renderFeed();
           }
@@ -1237,7 +1279,7 @@
         panel.addEventListener("click", (e) => {
           const b = e.target.closest("[data-act]");
           if (!b) return;
-          closeSheet();
+          dismissSheet();
           if (b.dataset.act === "copy") { toast("Link copied"); return; }
           const idx = ACTIVITIES.indexOf(a);
           ACTIVITIES.splice(idx, 1);
@@ -1841,7 +1883,7 @@
       onMount(panel) {
         $("[data-confirm]", panel).addEventListener("click", () => {
           if (comp.draftId) DRAFTS = DRAFTS.filter((d) => d.draftId !== comp.draftId);
-          closeSheet();
+          dismissSheet();
           closePanel();
           renderHeader();
           if (location.hash === "#/drafts") renderDrafts();
@@ -2003,6 +2045,7 @@
     $("#route-timeline").hidden = drafts;
     $("#route-drafts").hidden = !drafts;
     closeSheet();
+    dropOverlay("sheet");
     if (drafts) {
       renderDrafts();
     } else {
@@ -2070,10 +2113,20 @@
 
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
-      if (sheetOpen) closeSheet();
+      if (sheetOpen) dismissSheet();
       else if (panelRequestClose) panelRequestClose();
     });
-    window.addEventListener("resize", () => { if (sheetOpen && isDesktop()) closeSheet(); syncAppbarHeight(); });
+    window.addEventListener("popstate", () => {
+      if (ignorePop) { ignorePop = false; return; }
+      const kind = overlay.pop();
+      if (!kind) return;
+      ignorePop = true;
+      if (kind === "sheet") closeSheet();
+      else if (kind === "panel") (panelRequestClose || closePanel)();
+      ignorePop = false;
+      if (overlay.length) history.pushState({ gsOverlay: overlay.length }, "");
+    });
+    window.addEventListener("resize", () => { if (sheetOpen && isDesktop()) dismissSheet(); syncAppbarHeight(); });
     window.addEventListener("hashchange", route);
     if ("ResizeObserver" in window) {
       new ResizeObserver(syncAppbarHeight).observe($("#timeline-appbar"));
