@@ -1067,6 +1067,19 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .rte:hover { border-color: var(--primary); }
 .rte:focus-within { border-color: var(--primary); box-shadow: var(--ring); }
 .rte--comment { border-radius: var(--radius); }
+.rte--comment:not(:focus-within):not(.has-text) { border-radius: 100px; }
+.rte--comment:not(:focus-within):not(.has-text) .rte__bar,
+.rte--comment:not(:focus-within):not(.has-text) .rte__link { display: none; }
+.rte--comment:not(:focus-within):not(.has-text) .rte__area {
+  height: 44px;
+  min-height: 0;
+  max-height: none;
+  padding: 0 18px;
+  line-height: 44px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.rte--comment .rte__area { font-size: 16px; }
 .field.has-error .rte { border-color: var(--danger); }
 
 .rte__area {

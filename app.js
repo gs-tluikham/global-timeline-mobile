@@ -1184,7 +1184,14 @@
         const ta = $("[data-comment-input]", sheet);
         const pop = $("[data-mention-pop]", sheet);
         const send = $("[data-comment-send]", sheet);
-        const rte = bindRte(form, ta, { mentionPop: pop, onChange: () => { send.disabled = !rteHasContent(ta); } });
+        const box = $(".rte--comment", form);
+        const rte = bindRte(form, ta, {
+          mentionPop: pop,
+          onChange: () => {
+            send.disabled = !rteHasContent(ta);
+            box.classList.toggle("has-text", rteHasContent(ta));
+          },
+        });
 
         ta.addEventListener("keydown", (ev) => {
           if (ev.key === "Enter" && !ev.shiftKey && isDesktop() && pop.hidden && !rte.inList()) {
@@ -1200,6 +1207,8 @@
           ta.innerHTML = "";
           rte.showFormats(false);
           send.disabled = true;
+          box.classList.remove("has-text");
+          ta.blur();
           $("[data-comment-list]", sheet).innerHTML = commentsHtml(a);
           $("[data-comment-count]", sheet).textContent = a.comments.length;
           const scroller = $("[data-detail-scroll]", sheet);
