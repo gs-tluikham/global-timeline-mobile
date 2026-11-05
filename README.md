@@ -16,7 +16,7 @@ Open http://localhost:5179 (use a phone or DevTools device mode; it also adapts 
 **Included**
 - Views picker (select only — no create/edit)
 - Quick filters: Activity Type (multi-select) and Activity Date (presets + custom range)
-- Scoped search: Content (filters + highlights text), Entity (Company / Relationship), People (Person / User)
+- Scoped search below the quick filters: Content (filters + highlights text), Entity (Company / Relationship), People (Person / User)
 - Flat activity feed with 8px gaps; tap a company or relationship name to filter by it
 - Activity detail with comments and @mentions
 - Add Activity composer whose fields change per activity type

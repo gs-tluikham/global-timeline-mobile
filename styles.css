@@ -1093,6 +1093,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 @media (max-width: 767px) {
   .hide-sm { display: none !important; }
   input, textarea, select, .editor__area { font-size: 16px; }
+  #timeline-appbar .chips { order: -1; }
 }
 
 @media (min-width: 768px) {
