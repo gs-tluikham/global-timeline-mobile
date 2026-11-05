@@ -486,10 +486,25 @@
   }
 
   function closePanel() {
-    $("#panel-root").innerHTML = "";
-    document.body.classList.remove("no-scroll");
+    const root = $("#panel-root");
+    const sheet = $(".panel__sheet", root);
+    if (sheet?.classList.contains("is-leaving")) return;
     panelRequestClose = null;
     releaseOverlay("panel");
+    const finish = () => {
+      if (!$(".panel__sheet.is-leaving", root)) return;
+      root.innerHTML = "";
+      document.body.classList.remove("no-scroll");
+    };
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!sheet || reduce) {
+      root.innerHTML = "";
+      document.body.classList.remove("no-scroll");
+      return;
+    }
+    sheet.classList.add("is-leaving");
+    sheet.addEventListener("animationend", finish, { once: true });
+    setTimeout(finish, 280);
   }
 
   /* ───────── Filtering ───────── */
@@ -1543,7 +1558,7 @@
     const toolbar = rteBarHtml({ extra: `<button type="button" class="rte__btn" data-attach aria-label="Attach file" title="Attach file">${svg("paperclip", 20)}</button>` });
     return `
       <div class="panel__header">
-        <button type="button" class="icon-btn" data-composer-close aria-label="Close">${svg("x", 20)}</button>
+        <button type="button" class="icon-btn" data-composer-close aria-label="${isDesktop() ? "Close" : "Back"}">${svg(isDesktop() ? "x" : "chevronLeft", 20)}</button>
         <div class="panel__heading"><span>${comp.draftId ? "Edit draft" : "New activity"}</span></div>
         <span class="save-state" data-save-state>${comp.draftId ? "Draft" : ""}</span>
       </div>

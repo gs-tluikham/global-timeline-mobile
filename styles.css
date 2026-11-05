@@ -732,7 +732,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   background: var(--surface);
   border-radius: 16px 16px 0 0;
   padding-bottom: var(--safe-b);
-  animation: up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .sheet__grabber { width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--border-2); flex: none; }
 .sheet__header { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 6px 16px; flex: none; }
@@ -834,8 +834,9 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   flex-direction: column;
   background: var(--surface);
 }
-.panel--detail .panel__sheet { animation: in-right 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.panel--composer .panel__sheet { animation: up 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.panel--detail .panel__sheet,
+.panel--composer .panel__sheet { animation: slide-in-right 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.panel__sheet.is-leaving { animation: slide-out-right 0.22s cubic-bezier(0.4, 0, 1, 1) forwards; }
 
 .panel__header {
   display: flex;
@@ -1184,8 +1185,13 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 
 @keyframes fade { from { opacity: 0; } }
 @keyframes up { from { transform: translateY(24px); opacity: 0; } }
-@keyframes in-right { from { transform: translateX(32px); opacity: 0; } }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes slide-in-right { from { transform: translateX(100%); } }
+@keyframes slide-out-right { to { transform: translateX(100%); } }
 @keyframes pop { from { transform: translateY(-4px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .panel__sheet, .panel__sheet.is-leaving, .sheet__panel { animation: none; }
+}
 
 /* ───────── Responsive ───────── */
 @media (max-width: 767px) {
@@ -1331,7 +1337,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 
   .panel__backdrop { display: block; }
   .panel__sheet { left: auto; width: min(600px, 100vw); border-left: 1px solid var(--border); }
-  .panel--composer .panel__sheet { width: min(960px, calc(100vw - 48px)); animation: in-right 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .panel--composer .panel__sheet { width: min(960px, calc(100vw - 48px)); }
   .close-mobile { display: none; }
   .close-desktop { display: inline-grid; }
   .detail { padding: 20px 24px 28px; }
