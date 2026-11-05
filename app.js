@@ -2,41 +2,14 @@
   "use strict";
 
   /* ───────── Icons ───────── */
-  const ICONS = {
-    phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
-    users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
-    message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-    flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
-    search: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
-    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
-    chevronDown: '<polyline points="6 9 12 15 18 9"/>',
-    chevronLeft: '<polyline points="15 18 9 12 15 6"/>',
-    plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
-    refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><polyline points="21 3 21 8 16 8"/>',
-    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
-    layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
-    check: '<polyline points="20 6 9 17 4 12"/>',
-    send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
-    more: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
-    trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
-    building: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>',
-    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
-    mapPin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
-    bold: '<path d="M6 4h8a4 4 0 0 1 0 8H6z"/><path d="M6 12h9a4 4 0 0 1 0 8H6z"/>',
-    italic: '<line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/>',
-    underline: '<path d="M6 3v7a6 6 0 0 0 12 0V3"/><line x1="4" y1="21" x2="20" y2="21"/>',
-    list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
-    listOrdered: '<line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
-    at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>',
-    checkCircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-    circle: '<circle cx="12" cy="12" r="9"/>',
-    template: '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>',
-    paperclip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  const ICONS = window.HZ_ICONS || {};
+  const svg = (name, size = 16) => {
+    const set = ICONS[name];
+    const src = set && (size <= 16 ? set["16"] || set["24"] : set["24"] || set["16"]);
+    if (!src) return "";
+    const px = src === set["24"] ? Math.max(size, 20) : size;
+    return `<svg class="i" width="${px}" height="${px}" viewBox="${src.vb}" fill="none" aria-hidden="true">${src.inner}</svg>`;
   };
-  const svg = (name, size = 18) =>
-    `<svg class="i" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
 
   /* ───────── Helpers ───────── */
   const $ = (s, r = document) => r.querySelector(s);
@@ -107,38 +80,38 @@
 
   const TYPES = {
     Call: {
-      label: "Call", icon: "phone", fg: "#1765f2", bg: "#e7f0ff",
+      label: "Call", icon: "phone", fg: "#0369e9", bg: "#e6f0fd",
       notes: "Call notes", placeholder: "What was discussed? Type @ to mention a teammate",
       details: ["duration", "outcome", "internal", "external"],
       template: "<p><b>Purpose</b></p><ul><li><br></li></ul><p><b>Discussion</b></p><ul><li><br></li></ul><p><b>Next steps</b></p><ul><li><br></li></ul>",
     },
     Meeting: {
-      label: "Meeting", icon: "users", fg: "#0f9d63", bg: "#e2f6ec",
+      label: "Meeting", icon: "users", fg: "#12995b", bg: "#ebfbee",
       notes: "Meeting notes", placeholder: "Agenda, decisions, next steps…",
       details: ["duration", "location", "internal", "external"],
       template: "<p><b>Agenda</b></p><ul><li><br></li></ul><p><b>Decisions</b></p><ul><li><br></li></ul><p><b>Action items</b></p><ul><li><br></li></ul>",
     },
     Email: {
-      label: "Email", icon: "mail", fg: "#b86e00", bg: "#fff3dc",
+      label: "Email", icon: "mail", fg: "#df8404", bg: "#fff3d1",
       notes: "Email body", placeholder: "Write or paste the email…",
       details: ["to", "cc"],
       template: "<p>Hi ,</p><p><br></p><p>Best,<br>Maya</p>",
     },
     Update: {
-      label: "Update", icon: "message", fg: "#d6336c", bg: "#fde8ef",
+      label: "Update", icon: "message", fg: "#ea3477", bg: "#ffe6ef",
       notes: "Notes", placeholder: "Share an update. Type @ to mention a teammate",
       details: [],
       template: "<p><b>What changed</b></p><p><br></p><p><b>Impact</b></p><p><br></p>",
     },
     Milestone: {
-      label: "Milestone", icon: "flag", fg: "#7048e8", bg: "#efe9fd",
+      label: "Milestone", icon: "flag", fg: "#873ed1", bg: "#f0e5fa",
       notes: "Description", placeholder: "What was achieved?",
       details: ["milestoneType"],
       template: "<p><b>Milestone</b></p><p><br></p><p><b>Who was involved</b></p><p><br></p>",
     },
   };
   const TYPE_KEYS = Object.keys(TYPES);
-  const NO_TYPE = { label: "", icon: "file", fg: "#4e5a6b", bg: "#eef1f5", notes: "Notes", placeholder: "Enter notes and @mention users", details: [], template: "" };
+  const NO_TYPE = { label: "", icon: "file", fg: "#5f6c7a", bg: "#f5f7f9", notes: "Notes", placeholder: "Enter notes and @mention users", details: [], template: "" };
   const typeCfg = (t) => TYPES[t] || NO_TYPE;
   const OUTCOMES = ["Connected", "Left voicemail", "No answer", "Rescheduled"];
   const MILESTONES = ["Kickoff", "Onboarding complete", "Go-live", "QBR", "Renewal", "Expansion", "Risk flagged"];
@@ -288,8 +261,8 @@
 
   /* ───────── Formatting ───────── */
   const PALETTE = [
-    ["#e0ecff", "#1d4ed8"], ["#dcfce7", "#15803d"], ["#fef3c7", "#b45309"], ["#fce7f3", "#be185d"],
-    ["#ede9fe", "#6d28d9"], ["#e0f2fe", "#0369a1"], ["#ffe4e6", "#be123c"], ["#f1f5f9", "#334155"],
+    ["#d3ecfa", "#1982ba"], ["#ebfbee", "#12995b"], ["#fff3d1", "#df8404"], ["#ffe6ef", "#ea3477"],
+    ["#f0e5fa", "#873ed1"], ["#daf3f7", "#2390a2"], ["#ebecfa", "#4e5bca"], ["#e1e7ef", "#48658b"],
   ];
   const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
   const initials = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -547,10 +520,10 @@
     const dateActive = state.date.preset !== "anytime";
     $("#chips").innerHTML = `
       <button type="button" class="chip ${typeActive ? "is-active" : ""}" data-chip="type" aria-haspopup="dialog">
-        ${svg("layers", 14)}<span>Type</span><strong>${esc(typesLabel())}</strong>${svg("chevronDown", 14)}
+        <span>Activity Type:</span><strong>${esc(typesLabel())}</strong>${svg("chevronDown", 16)}
       </button>
       <button type="button" class="chip ${dateActive ? "is-active" : ""}" data-chip="date" aria-haspopup="dialog">
-        ${svg("calendar", 14)}<span>Date</span><strong>${esc(dateLabel())}</strong>${svg("chevronDown", 14)}
+        <span>Activity Date:</span><strong>${esc(dateLabel() === "Anytime" ? "All" : dateLabel())}</strong>${svg("calendar", 16)}
       </button>
       ${typeActive || dateActive ? '<button type="button" class="chip chip--clear" data-chip="clear">Clear</button>' : ""}`;
   }
@@ -1365,7 +1338,7 @@
   function composerHtml() {
     const cfg = typeCfg(comp.type);
     const tpl = templateState();
-    const toolbar = [["bold", "bold"], ["italic", "italic"], ["underline", "underline"], ["insertUnorderedList", "list"], ["insertOrderedList", "listOrdered"], ["mention", "at"]]
+    const toolbar = [["bold", "bold"], ["italic", "italic"], ["underline", "underline"], ["insertUnorderedList", "list"], ["mention", "at"]]
       .map(([cmd, icon]) => `<button type="button" data-cmd="${cmd}" aria-label="${cmd}">${svg(icon, 16)}</button>`).join("")
       + `<button type="button" data-attach aria-label="Attach file">${svg("paperclip", 16)}</button>`;
     return `
@@ -1937,7 +1910,7 @@
   /* ───────── Init ───────── */
   function init() {
     $$("[data-icon]").forEach((el) => {
-      const size = 18;
+      const size = el.closest(".shellbar") ? 24 : 18;
       el.insertAdjacentHTML("afterbegin", svg(el.dataset.icon, size));
     });
 
@@ -1979,6 +1952,9 @@
     $("#add-btn").addEventListener("click", () => openComposer());
     $("#fab").addEventListener("click", () => openComposer());
     $("#refresh-btn").addEventListener("click", () => { renderFeed(); toast("Timeline refreshed"); });
+    $("#me-avatar").innerHTML = avatar(ME, 32);
+    $("#menu-btn").addEventListener("click", () => toast("Main menu isn’t part of this prototype"));
+    $("#global-search-btn").addEventListener("click", () => toast("Global search isn’t part of this prototype — use the Timeline search below"));
 
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;

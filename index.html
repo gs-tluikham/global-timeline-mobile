@@ -14,18 +14,23 @@
   <div class="app">
     <section class="route" id="route-timeline">
       <header class="appbar" id="timeline-appbar">
-        <div class="appbar__row">
-          <div class="appbar__title">
-            <h1>Timeline</h1>
-            <button type="button" class="view-switch" id="view-switch" aria-haspopup="dialog">
-              <span id="view-label">Default View</span>
-              <span class="view-switch__chev" data-icon="chevronDown"></span>
-            </button>
+        <div class="shellbar">
+          <div class="shellbar__inner">
+            <button type="button" class="icon-btn" id="menu-btn" aria-label="Main menu" data-icon="menu"></button>
+            <h1 class="shellbar__title">Timeline</h1>
+            <span class="spacer"></span>
+            <button type="button" class="icon-btn" id="global-search-btn" aria-label="Search Gainsight" data-icon="search"></button>
+            <span class="shellbar__avatar" id="me-avatar"></span>
           </div>
+        </div>
+        <div class="appbar__row">
+          <button type="button" class="view-switch" id="view-switch" aria-haspopup="dialog">
+            <span id="view-label">Default View</span>
+            <span class="view-switch__chev" data-icon="chevronDown"></span>
+          </button>
           <div class="appbar__actions">
             <button type="button" class="icon-btn hide-sm" id="refresh-btn" aria-label="Refresh" data-icon="refresh"></button>
             <button type="button" class="drafts-btn" id="drafts-btn" aria-label="Drafts">
-              <span data-icon="file"></span>
               <span class="drafts-btn__label">Drafts</span>
               <span class="drafts-btn__count" id="drafts-count">0</span>
             </button>
@@ -98,6 +103,7 @@
   <div id="sheet-root"></div>
   <div class="toast" id="toast" role="status" hidden></div>
 
+  <script src="icons.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -23,7 +23,19 @@ Open http://localhost:5179 (use a phone or DevTools device mode; it also adapts 
 - Drafts: closing a filled composer auto-saves; select + delete with undo; Email & plugin filter
 
 **Deferred**
-- Advanced Filters, Create View, global header search, real APIs, Horizon components
+- Advanced Filters, Create View, global header search, real APIs, Angular Horizon components (`<gs-*>` / `<nz-*>`)
+
+## Visual system
+
+Styled to Horizon v3.1 (`horizon-design-system` skill): Royal Blue / Rich Gray tokens, Noto Sans, pill buttons (32px), 8px inputs and filter triggers, 16px cards with `100-Bottom` shadow, grey secondary tabs, circular icon-button hover. Activity-type and avatar tints come from `gs-design-tokens`.
+
+Icons are the real Horizon SVGs. `icons.js` is generated — rebuild it after changing the icon set:
+
+```bash
+node tools/build-icons.mjs
+```
+
+It reads `../../horizon-design-system/horizon icons/icons/{16,24}/` and swaps the baked-in `#5F6C7A` for `currentColor`. Type sizes stay on the 14 / 16 / 24 px scale agreed for this prototype (12px only for badges and keyboard hints).
 
 ## Composer fields by type
 
