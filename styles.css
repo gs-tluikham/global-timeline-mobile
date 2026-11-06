@@ -1190,6 +1190,33 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .rte .mention-pop { left: 8px; right: 8px; bottom: calc(100% + 8px); }
 .rte--notes .mention-pop { top: 56px; bottom: auto; right: auto; width: min(300px, calc(100% - 24px)); }
 
+/* Keep the formatting bar + mentions above the phone keyboard. */
+body.is-kbd .panel__sheet,
+body.is-kbd .picker {
+  top: var(--vv-top, 0px);
+  height: var(--vv-h, 100%);
+  bottom: auto;
+}
+body.is-kbd-rte .panel--composer .panel__footer { display: none; }
+body.is-kbd .rte--notes .rte__bar,
+body.is-kbd .rte--notes .rte__link {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  background: var(--surface);
+}
+body.is-kbd .rte--notes .mention-pop {
+  top: auto;
+  bottom: 52px;
+  left: 8px;
+  right: 8px;
+  width: auto;
+  max-height: min(200px, 40dvh);
+}
+body.is-kbd .rte--comment .mention-pop {
+  max-height: min(180px, 36dvh);
+}
+
 .task { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .task__row { display: flex; align-items: center; gap: 8px; }
 .task__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 4px 0 0 36px; }

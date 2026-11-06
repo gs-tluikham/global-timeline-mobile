@@ -1167,6 +1167,48 @@
 
   const rteHasContent = (el) => !!(stripHtml(el.innerHTML) || el.querySelector(".mention, li, a"));
 
+  function keepRteAboveKeyboard(rte) {
+    if (!rte || !document.body.classList.contains("is-kbd")) return;
+    const bar = $("[data-rte-bar]", rte);
+    const pop = $(".mention-pop:not([hidden])", rte);
+    requestAnimationFrame(() => {
+      bar?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      pop?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  }
+
+  function syncVisualViewport() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    const kbd = !isWide() && inset > 60;
+    const rte = document.activeElement?.closest?.(".rte");
+    document.documentElement.style.setProperty("--kbd", `${inset}px`);
+    document.documentElement.style.setProperty("--vv-top", `${Math.round(vv.offsetTop)}px`);
+    document.documentElement.style.setProperty("--vv-h", `${Math.round(vv.height)}px`);
+    document.body.classList.toggle("is-kbd", kbd);
+    document.body.classList.toggle("is-kbd-rte", kbd && !!document.activeElement?.closest?.(".rte__area"));
+    if (!kbd) return;
+    keepRteAboveKeyboard(rte);
+  }
+
+  function bindVisualViewport() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const bump = () => {
+      syncVisualViewport();
+      setTimeout(syncVisualViewport, 60);
+      setTimeout(syncVisualViewport, 280);
+    };
+    vv.addEventListener("resize", syncVisualViewport);
+    vv.addEventListener("scroll", syncVisualViewport);
+    window.addEventListener("focusin", (e) => {
+      if (e.target.closest?.(".rte__area, input, textarea, [contenteditable='true']")) bump();
+    });
+    window.addEventListener("focusout", () => setTimeout(syncVisualViewport, 80));
+    window.addEventListener("resize", syncVisualViewport);
+  }
+
   function rteMention(editor, pop, onChange) {
     const sel = window.getSelection();
     if (!sel.rangeCount) { pop.hidden = true; return; }
@@ -1195,6 +1237,7 @@
       editor.focus();
       onChange();
     });
+    keepRteAboveKeyboard(editor.closest(".rte"));
   }
 
   function bindRte(root, editor, { mentionPop, onChange = () => {} }) {
@@ -2318,6 +2361,7 @@
     }
 
     bindQuickReturn();
+    bindVisualViewport();
     syncChipFade();
     $("#chips").addEventListener("scroll", syncChipFade, { passive: true });
     window.addEventListener("online", syncNet);
