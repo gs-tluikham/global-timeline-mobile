@@ -1265,7 +1265,8 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
 .ent-badge { font-weight: 600; }
 
 /* ───────── Responsive ───────── */
-@media (max-width: 599px) {
+/* Phone = narrow window OR compact height (a phone in landscape). */
+@media (max-width: 599px), (max-height: 479px) {
   .hide-sm { display: none !important; }
   input, textarea, select, .rte__area { font-size: 16px; line-height: 24px; }
   #timeline-appbar .chips { order: -1; }
@@ -1367,7 +1368,20 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   .toolbar { max-height: 160px; transition: max-height 0.2s ease, opacity 0.2s ease, padding 0.2s ease; }
 }
 
-@media (min-width: 600px) {
+/* Phone in landscape: still phone behaviour, adapted to a short, wide window. */
+@media (max-height: 479px) and (orientation: landscape) {
+  .appbar__row { padding: 4px max(16px, env(safe-area-inset-right)) 4px max(16px, env(safe-area-inset-left)); }
+  .toolbar { gap: 6px; padding: 0 max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); }
+  .chips { margin: 0 calc(-1 * max(16px, env(safe-area-inset-right))) 0 calc(-1 * max(16px, env(safe-area-inset-left))); padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
+  .feed { padding: 8px max(12px, env(safe-area-inset-right)) calc(80px + var(--safe-b)) max(12px, env(safe-area-inset-left)); }
+  .fab { right: max(16px, env(safe-area-inset-right)); bottom: calc(12px + var(--safe-b)); }
+  .sheet:not(.sheet--full):not(.sheet--popover):not(.sheet--dialog) .sheet__panel { margin: 0 auto; width: min(560px, 100%); }
+  .panel__header { min-height: 48px; }
+  .detail, .comment-composer { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+}
+
+/* Tablet = at least 600px wide AND at least 480px tall. */
+@media (min-width: 600px) and (min-height: 480px) {
   .show-sm { display: none !important; }
 
   .appbar__row { padding: 14px 24px 10px; }
@@ -1436,7 +1450,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   .comment-composer { padding: 12px 20px; }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1024px) and (min-height: 480px) {
   body.is-split #route-timeline { margin-right: min(440px, 40vw); }
   .panel--detail .panel__backdrop { display: none; }
   .panel--detail .panel__sheet { width: min(440px, 40vw); }

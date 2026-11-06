@@ -14,8 +14,8 @@
   /* ───────── Helpers ───────── */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-  const isWide = () => window.matchMedia("(min-width: 600px)").matches;
-  const isSplit = () => window.matchMedia("(min-width: 1024px)").matches;
+  const isWide = () => window.matchMedia("(min-width: 600px) and (min-height: 480px)").matches;
+  const isSplit = () => window.matchMedia("(min-width: 1024px) and (min-height: 480px)").matches;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const stripHtml = (html) => {
