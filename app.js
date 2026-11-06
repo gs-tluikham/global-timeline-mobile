@@ -471,10 +471,16 @@
   /* ───────── Full-screen lookup (phone entity, people, and composer pickers) ───────── */
   let pickerOpen = false;
 
-  function openPicker({ title, placeholder, rows, onPick }) {
+  let pickerOnClose = null;
+
+  function openPicker({ title, placeholder, rows, onPick, query = "", minChars = 2, onClose }) {
     const replacing = pickerOpen;
+    const prevClose = pickerOnClose;
     closePicker();
+    pickerOnClose = null;
+    if (prevClose) prevClose();
     if (!replacing) rememberOverlay("picker");
+    pickerOnClose = onClose || null;
     const root = $("#picker-root");
     root.innerHTML = `
       <div class="picker">
@@ -493,8 +499,8 @@
     let timer;
     const paint = () => {
       const q = input.value.trim();
-      if (q.length === 1) {
-        list.innerHTML = `<div class="results__empty">Type at least 2 characters</div>`;
+      if (minChars && q.length > 0 && q.length < minChars) {
+        list.innerHTML = `<div class="results__empty">Type at least ${minChars} characters</div>`;
         return;
       }
       const opts = rows(q);
@@ -510,8 +516,10 @@
     });
     $("[data-picker-close]", root).addEventListener("click", dismissPicker);
     pickerOpen = true;
+    if (query) input.value = query;
     paint();
     input.focus();
+    if (query) input.setSelectionRange(query.length, query.length);
   }
 
   function closePicker() {
@@ -521,8 +529,49 @@
 
   function dismissPicker() {
     if (!pickerOpen) return;
+    const done = pickerOnClose;
+    pickerOnClose = null;
     closePicker();
     releaseOverlay("picker");
+    if (done) done();
+  }
+
+  function mentionRows(q) {
+    const query = q.trim().toLowerCase();
+    return USERS.filter((u) => !u.system && (!query || `${u.name} ${u.email} ${u.title}`.toLowerCase().includes(query)))
+      .slice(0, 20)
+      .map((u) => ({ id: u.id, lead: avatar(u, 32), title: u.name, sub: u.title || u.email }));
+  }
+
+  function insertMention(editor, range, person) {
+    editor.focus();
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    if (range && editor.contains(range.startContainer)) sel.addRange(range);
+    else {
+      const end = document.createRange();
+      end.selectNodeContents(editor);
+      end.collapse(false);
+      sel.addRange(end);
+    }
+    document.execCommand("insertHTML", false, `${mention(person.id)}&nbsp;`);
+  }
+
+  function openMentionPicker(editor, range, seed, onChange) {
+    if (pickerOpen) return;
+    openPicker({
+      title: "Mention someone",
+      placeholder: "Search teammates",
+      query: seed,
+      minChars: 0,
+      rows: mentionRows,
+      onClose: () => editor.focus(),
+      onPick: (id) => {
+        dismissPicker();
+        insertMention(editor, range, personById[id]);
+        onChange();
+      },
+    });
   }
 
   function openScopeLookup() {
@@ -1217,6 +1266,15 @@
     const offset = sel.anchorOffset;
     const m = node.nodeValue.slice(0, offset).match(/(^|\s)@(\w*)$/);
     if (!m) { pop.hidden = true; return; }
+    if (!isWide()) {
+      const range = document.createRange();
+      range.setStart(node, offset - m[2].length - 1);
+      range.setEnd(node, offset);
+      range.deleteContents();
+      pop.hidden = true;
+      openMentionPicker(editor, range.cloneRange(), m[2], onChange);
+      return;
+    }
     renderMentionPop(pop, m[2], (p) => {
       const range = document.createRange();
       range.setStart(node, offset - m[2].length - 1);
@@ -1301,6 +1359,12 @@
       if (act === "close") { showFormats(false); editor.focus(); return; }
       if (act === "mention") {
         editor.focus();
+        if (!isWide()) {
+          const sel = window.getSelection();
+          const caret = sel.rangeCount && editor.contains(sel.anchorNode) ? sel.getRangeAt(0).cloneRange() : null;
+          openMentionPicker(editor, caret, "", changed);
+          return;
+        }
         document.execCommand("insertText", false, "@");
         rteMention(editor, mentionPop, changed);
         return;
