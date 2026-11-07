@@ -786,6 +786,9 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   border-top: 1px solid var(--border);
   flex: none;
 }
+.sheet-form { padding: 4px 16px 8px; }
+.sheet__footer--split { gap: 12px; padding: 12px 16px; }
+.sheet__footer--split .btn { flex: 1; height: 44px; }
 .sheet__search {
   display: flex;
   align-items: center;
@@ -1196,6 +1199,9 @@ body.is-kbd .picker {
   top: var(--vv-top, 0px);
   height: var(--vv-h, 100%);
   bottom: auto;
+}
+body.is-kbd .sheet:not(.sheet--dialog):not(.sheet--popover) .sheet__panel {
+  bottom: var(--kbd, 0px);
 }
 body.is-kbd-rte .panel--composer .panel__footer { display: none; }
 body.is-kbd .rte--notes .rte__bar,

@@ -431,7 +431,7 @@
   /* ───────── Sheet (bottom sheet on mobile, popover on desktop) ───────── */
   let sheetOpen = false;
 
-  function openSheet({ title = "", body = "", footer = "", dialog = false, full = false, onMount }) {
+  function openSheet({ title = "", body = "", footer = "", footerClass = "", dialog = false, full = false, focus, onMount }) {
     const replacing = sheetOpen;
     closeSheet();
     if (!replacing) rememberOverlay("sheet");
@@ -446,15 +446,15 @@
           ${!asDialog && !full ? '<div class="sheet__grabber"></div>' : ""}
           ${title ? `<div class="sheet__header"><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-sheet-close aria-label="Close">${svg("x", 18)}</button></div>` : ""}
           <div class="sheet__body">${body}</div>
-          ${footer ? `<div class="sheet__footer">${footer}</div>` : ""}
+          ${footer ? `<div class="sheet__footer ${footerClass}">${footer}</div>` : ""}
         </div>
       </div>`;
     const panel = $(".sheet__panel", root);
     $$("[data-sheet-close]", root).forEach((el) => el.addEventListener("click", dismissSheet));
     sheetOpen = true;
     onMount && onMount(panel);
-    const first = panel.querySelector("input:not([type=date])");
-    if (first && wide) first.focus();
+    const target = focus ? $(focus, panel) : panel.querySelector("input:not([type=date])");
+    if (target && wide) target.focus();
   }
 
   function closeSheet() {
@@ -1337,14 +1337,16 @@
       sel.addRange(savedRange);
     };
     const closeLink = () => { linkRow.hidden = true; linkInput.value = ""; };
-    const applyLink = () => {
+    const applyLink = (label = "") => {
       let url = linkInput.value.trim();
-      if (!url) { closeLink(); editor.focus(); return; }
+      if (!url || /^https?:\/\/$/i.test(url)) { closeLink(); editor.focus(); return; }
       if (!/^[a-z]+:\/\//i.test(url) && !url.startsWith("mailto:")) url = `https://${url}`;
+      const text = String(label || "").trim();
       restoreSelection();
       const sel = window.getSelection();
-      if (sel.rangeCount && !sel.isCollapsed) document.execCommand("createLink", false, url);
-      else document.execCommand("insertHTML", false, `<a href="${esc(url)}">${esc(url)}</a>&nbsp;`);
+      const hasSel = sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode);
+      if (hasSel && !text) document.execCommand("createLink", false, url);
+      else document.execCommand("insertHTML", false, `<a href="${esc(url)}">${esc(text || url)}</a>&nbsp;`);
       closeLink();
       changed();
     };
@@ -1371,20 +1373,40 @@
       }
       if (act === "link") {
         keepSelection();
-        const sel = window.getSelection();
-        const hint = sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode) ? "Link the selected text" : "Paste or type a link";
+        const selected = savedRange && !savedRange.collapsed ? savedRange.toString().trim() : "";
         openSheet({
           title: "Add link",
-          body: `<label class="field__label" for="link-url">Link</label><input id="link-url" class="input" type="url" inputmode="url" enterkeyhint="done" placeholder="${esc(hint)}" data-link-url>`,
-          footer: `<span class="spacer"></span><button type="button" class="btn btn--ghost" data-sheet-close>Cancel</button><button type="button" class="btn btn--primary" data-link-add>Add</button>`,
+          focus: "[data-link-url]",
+          footerClass: "sheet__footer--split",
+          body: `
+            <div class="sheet-form">
+              <div class="field">
+                <label class="field__label" for="link-text">Text to display</label>
+                <input id="link-text" class="input" type="text" autocomplete="off" placeholder="Link text (optional)" value="${esc(selected)}" data-link-text>
+              </div>
+              <div class="field">
+                <label class="field__label" for="link-url">Web address</label>
+                <input id="link-url" class="input" type="url" inputmode="url" autocomplete="off" enterkeyhint="done" placeholder="https://" data-link-url>
+                <p class="field__hint">Paste or type a link, for example gainsight.com</p>
+              </div>
+            </div>`,
+          footer: `<button type="button" class="btn btn--outline" data-sheet-close>Cancel</button><button type="button" class="btn btn--primary" data-link-add disabled>Insert</button>`,
           onMount(panel) {
-            const input = $("[data-link-url]", panel);
-            input.focus();
-            $("[data-link-add]", panel).addEventListener("click", () => {
-              linkInput.value = input.value;
+            const url = $("[data-link-url]", panel);
+            const text = $("[data-link-text]", panel);
+            const add = $("[data-link-add]", panel);
+            const usable = (v) => { const s = v.trim(); return !!s && !/^https?:\/\/$/i.test(s); };
+            const sync = () => { add.disabled = !usable(url.value); };
+            url.addEventListener("input", sync);
+            const commit = () => {
+              if (!usable(url.value)) return;
+              linkInput.value = url.value;
+              const label = text.value;
               dismissSheet();
-              applyLink();
-            });
+              applyLink(label);
+            };
+            add.addEventListener("click", commit);
+            url.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } });
           },
         });
         return;
